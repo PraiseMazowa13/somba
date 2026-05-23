@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { formatPrice } from "@/lib/money";
 
 export const Route = createFileRoute("/seller/orders")({
-  component: SellerOrders;
+  component: SellerOrders,
 });
 
 function SellerOrders() {
