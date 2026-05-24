@@ -333,6 +333,8 @@ export type Database = {
         Row: {
           banner_url: string | null
           created_at: string
+          deletion_reason: string | null
+          deletion_requested_at: string | null
           description: string | null
           id: string
           logo_url: string | null
@@ -345,6 +347,8 @@ export type Database = {
         Insert: {
           banner_url?: string | null
           created_at?: string
+          deletion_reason?: string | null
+          deletion_requested_at?: string | null
           description?: string | null
           id?: string
           logo_url?: string | null
@@ -357,6 +361,8 @@ export type Database = {
         Update: {
           banner_url?: string | null
           created_at?: string
+          deletion_reason?: string | null
+          deletion_requested_at?: string | null
           description?: string | null
           id?: string
           logo_url?: string | null
