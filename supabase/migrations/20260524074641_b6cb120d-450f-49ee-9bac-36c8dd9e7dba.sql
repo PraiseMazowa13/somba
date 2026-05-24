@@ -1,0 +1,1 @@
+CREATE POLICY "shops owner delete" ON public.shops FOR DELETE USING (owner_id = auth.uid());
