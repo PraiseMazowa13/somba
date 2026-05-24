@@ -53,6 +53,19 @@ function AdminPage() {
     await supabase.from("shops").update({ status }).eq("id", id);
     qc.invalidateQueries({ queryKey: ["admin-shops"] });
   }
+  async function rejectDeletion(id: string) {
+    await supabase.from("shops").update({ deletion_requested_at: null, deletion_reason: null }).eq("id", id);
+    toast.success("Demande de suppression refusée");
+    qc.invalidateQueries({ queryKey: ["admin-shops"] });
+  }
+  async function confirmDelete(id: string, name: string) {
+    if (!window.confirm(`Supprimer définitivement la boutique « ${name} » et tous ses produits ?`)) return;
+    await supabase.from("products").delete().eq("shop_id", id);
+    const { error } = await supabase.from("shops").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Boutique supprimée");
+    qc.invalidateQueries({ queryKey: ["admin-shops"] });
+  }
 
   return (
     <div className="container-zandu py-10 space-y-10">
