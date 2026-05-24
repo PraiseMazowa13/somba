@@ -69,14 +69,50 @@ function SellerShop() {
     setForm((f) => ({ ...f, [field]: data.publicUrl }));
   }
 
+  async function changeStatus(status: "suspended" | "pending") {
+    if (!shop) return;
+    const { error } = await supabase.from("shops").update({ status }).eq("id", shop.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(status === "suspended" ? "Boutique suspendue" : "Réactivation demandée");
+    qc.invalidateQueries({ queryKey: ["my-shop"] });
+  }
+
+  async function requestDeletion() {
+    if (!shop) return;
+    const reason = window.prompt("Motif de la suppression (optionnel) :") ?? "";
+    if (!window.confirm("Confirmer la demande de suppression ? Un administrateur devra la valider.")) return;
+    const { error } = await supabase.from("shops").update({ deletion_requested_at: new Date().toISOString(), deletion_reason: reason || null }).eq("id", shop.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Demande envoyée à l'administrateur");
+    qc.invalidateQueries({ queryKey: ["my-shop"] });
+  }
+
+  async function cancelDeletion() {
+    if (!shop) return;
+    const { error } = await supabase.from("shops").update({ deletion_requested_at: null, deletion_reason: null }).eq("id", shop.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Demande annulée");
+    qc.invalidateQueries({ queryKey: ["my-shop"] });
+  }
+
   if (isLoading) return <div>Chargement…</div>;
+
+  const statusLabel = shop?.status === "approved" ? "Approuvée ✓" : shop?.status === "pending" ? "En attente d'approbation" : "Suspendue";
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-1">{shop ? "Ma boutique" : "Créer ma boutique"}</h1>
       <p className="text-muted-foreground mb-6">
-        {shop ? `Statut : ${shop.status === "approved" ? "Approuvée ✓" : shop.status === "pending" ? "En attente d'approbation" : "Suspendue"}` : "Renseignez les informations de votre boutique pour commencer à vendre."}
+        {shop ? `Statut : ${statusLabel}` : "Renseignez les informations de votre boutique pour commencer à vendre."}
       </p>
+
+      {shop?.deletion_requested_at && (
+        <div className="card-zandu p-4 mb-6 border-destructive/40 bg-destructive/5">
+          <div className="font-medium text-destructive">Demande de suppression en cours</div>
+          <div className="text-sm text-muted-foreground mt-1">En attente de validation par un administrateur.</div>
+          <Button variant="outline" size="sm" className="mt-3" onClick={cancelDeletion}>Annuler la demande</Button>
+        </div>
+      )}
 
       <form onSubmit={save} className="card-zandu p-6 space-y-4 max-w-2xl">
         <div><Label>Nom de la boutique</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required maxLength={80} /></div>
@@ -90,6 +126,24 @@ function SellerShop() {
         </div>
         <Button disabled={saving}>{saving ? "Enregistrement…" : shop ? "Enregistrer" : "Créer la boutique"}</Button>
       </form>
+
+      {shop && (
+        <div className="card-zandu p-6 mt-6 max-w-2xl">
+          <h2 className="font-semibold mb-1">Gérer la boutique</h2>
+          <p className="text-sm text-muted-foreground mb-4">Suspendez temporairement votre boutique ou demandez sa suppression définitive.</p>
+          <div className="flex flex-wrap gap-3">
+            {shop.status === "approved" && (
+              <Button variant="outline" onClick={() => changeStatus("suspended")}>Suspendre ma boutique</Button>
+            )}
+            {shop.status === "suspended" && (
+              <Button variant="outline" onClick={() => changeStatus("pending")}>Demander la réactivation</Button>
+            )}
+            {!shop.deletion_requested_at && (
+              <Button variant="destructive" onClick={requestDeletion}>Demander la suppression</Button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
