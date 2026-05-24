@@ -79,13 +79,27 @@ function AdminPage() {
           {shops?.map((s) => (
             <div key={s.id} className="card-zandu p-4 flex flex-wrap justify-between items-center gap-3">
               <div>
-                <div className="font-medium">{s.name}</div>
+                <div className="font-medium flex items-center gap-2">
+                  {s.name}
+                  {s.deletion_requested_at && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">Suppression demandée</span>
+                  )}
+                </div>
                 <div className="text-xs text-muted-foreground">/{s.slug} · {s.status}</div>
+                {s.deletion_requested_at && s.deletion_reason && (
+                  <div className="text-xs text-muted-foreground mt-1">Motif : {s.deletion_reason}</div>
+                )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant={s.status === "approved" ? "secondary" : "default"} onClick={() => setShopStatus(s.id, "approved")}>Approuver</Button>
                 <Button size="sm" variant="outline" onClick={() => setShopStatus(s.id, "pending")}>En attente</Button>
                 <Button size="sm" variant="destructive" onClick={() => setShopStatus(s.id, "suspended")}>Suspendre</Button>
+                {s.deletion_requested_at && (
+                  <>
+                    <Button size="sm" variant="destructive" onClick={() => confirmDelete(s.id, s.name)}>Confirmer suppression</Button>
+                    <Button size="sm" variant="outline" onClick={() => rejectDeletion(s.id)}>Refuser</Button>
+                  </>
+                )}
               </div>
             </div>
           ))}
