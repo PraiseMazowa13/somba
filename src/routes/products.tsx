@@ -80,7 +80,7 @@ function ProductsPage() {
   });
 
   function update(patch: Partial<z.infer<typeof search>>) {
-    navigate({ search: (prev) => ({ ...prev, ...patch }) as any });
+    navigate({ search: (prev: any) => ({ ...prev, ...patch }) as any });
   }
 
   function applyPriceAndQuery(e?: React.FormEvent) {
