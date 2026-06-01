@@ -158,6 +158,38 @@ function SellerShop() {
 
       {shop && (
         <div className="card-zandu p-6 mt-6 max-w-2xl">
+          <h2 className="font-semibold mb-1">Zones de livraison</h2>
+          <p className="text-sm text-muted-foreground mb-4">Ajoutez les villes que vous livrez avec leur tarif (CDF ou USD).</p>
+
+          {zones.length > 0 && (
+            <ul className="mb-4 divide-y divide-border rounded-md border border-border">
+              {zones.map((z, i) => (
+                <li key={i} className="flex items-center justify-between px-3 py-2 text-sm">
+                  <span><span className="font-medium">{z.city}</span> — {(z.price_cents / 100).toLocaleString("fr-FR")} {z.currency}</span>
+                  <Button variant="ghost" size="sm" onClick={() => removeZone(i)}>Retirer</Button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr,140px,110px,auto] gap-2">
+            <Input placeholder="Ville" value={zoneCity} onChange={(e) => setZoneCity(e.target.value)} maxLength={60} />
+            <Input type="number" min="0" placeholder="Prix" value={zonePrice} onChange={(e) => setZonePrice(e.target.value)} />
+            <select
+              className="rounded-md border border-input bg-surface px-2 py-2 text-sm"
+              value={zoneCurrency}
+              onChange={(e) => setZoneCurrency(e.target.value as "CDF" | "USD")}
+            >
+              <option value="CDF">CDF</option>
+              <option value="USD">USD</option>
+            </select>
+            <Button type="button" onClick={addZone}>Ajouter</Button>
+          </div>
+        </div>
+      )}
+
+      {shop && (
+        <div className="card-zandu p-6 mt-6 max-w-2xl">
           <h2 className="font-semibold mb-1">Gérer la boutique</h2>
           <p className="text-sm text-muted-foreground mb-4">Suspendez temporairement votre boutique ou demandez sa suppression définitive.</p>
           <div className="flex flex-wrap gap-3">
