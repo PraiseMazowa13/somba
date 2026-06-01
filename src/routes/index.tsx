@@ -70,7 +70,7 @@ function Index() {
       <section className="container-zandu py-16">
         <div className="flex items-end justify-between mb-6">
           <h2 className="text-2xl md:text-3xl font-bold">Explorer par catégorie</h2>
-          <Link to="/products" className="text-sm text-brand hover:underline">Tout voir</Link>
+          <Link to="/categories" className="text-sm text-brand hover:underline">Tout voir</Link>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
           {categories?.map((c) => (
