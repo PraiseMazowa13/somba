@@ -34,10 +34,39 @@ function SellerShop() {
 
   const [form, setForm] = useState({ name: "", description: "", logo_url: "", banner_url: "" });
   const [saving, setSaving] = useState(false);
+  const [zoneCity, setZoneCity] = useState("");
+  const [zonePrice, setZonePrice] = useState("");
+  const [zoneCurrency, setZoneCurrency] = useState<"CDF" | "USD">("CDF");
+
+  type DeliveryZone = { city: string; price_cents: number; currency: string };
+  const zones: DeliveryZone[] = Array.isArray(shop?.delivery_zones) ? (shop?.delivery_zones as unknown as DeliveryZone[]) : [];
 
   useEffect(() => {
     if (shop) setForm({ name: shop.name, description: shop.description ?? "", logo_url: shop.logo_url ?? "", banner_url: shop.banner_url ?? "" });
   }, [shop]);
+
+  async function saveZones(next: DeliveryZone[]) {
+    if (!shop) return;
+    const { error } = await supabase.from("shops").update({ delivery_zones: next as any }).eq("id", shop.id);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["my-shop"] });
+  }
+
+  async function addZone() {
+    const city = zoneCity.trim();
+    const price = Number(zonePrice);
+    if (!city || !Number.isFinite(price) || price < 0) { toast.error("Ville et prix valides requis"); return; }
+    const next = [...zones, { city, price_cents: Math.round(price * 100), currency: zoneCurrency }];
+    await saveZones(next);
+    setZoneCity(""); setZonePrice("");
+    toast.success("Zone de livraison ajoutée");
+  }
+
+  async function removeZone(idx: number) {
+    const next = zones.filter((_, i) => i !== idx);
+    await saveZones(next);
+    toast.success("Zone supprimée");
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
