@@ -34,10 +34,39 @@ function SellerShop() {
 
   const [form, setForm] = useState({ name: "", description: "", logo_url: "", banner_url: "" });
   const [saving, setSaving] = useState(false);
+  const [zoneCity, setZoneCity] = useState("");
+  const [zonePrice, setZonePrice] = useState("");
+  const [zoneCurrency, setZoneCurrency] = useState<"CDF" | "USD">("CDF");
+
+  type DeliveryZone = { city: string; price_cents: number; currency: string };
+  const zones: DeliveryZone[] = Array.isArray(shop?.delivery_zones) ? (shop?.delivery_zones as unknown as DeliveryZone[]) : [];
 
   useEffect(() => {
     if (shop) setForm({ name: shop.name, description: shop.description ?? "", logo_url: shop.logo_url ?? "", banner_url: shop.banner_url ?? "" });
   }, [shop]);
+
+  async function saveZones(next: DeliveryZone[]) {
+    if (!shop) return;
+    const { error } = await supabase.from("shops").update({ delivery_zones: next as any }).eq("id", shop.id);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["my-shop"] });
+  }
+
+  async function addZone() {
+    const city = zoneCity.trim();
+    const price = Number(zonePrice);
+    if (!city || !Number.isFinite(price) || price < 0) { toast.error("Ville et prix valides requis"); return; }
+    const next = [...zones, { city, price_cents: Math.round(price * 100), currency: zoneCurrency }];
+    await saveZones(next);
+    setZoneCity(""); setZonePrice("");
+    toast.success("Zone de livraison ajoutée");
+  }
+
+  async function removeZone(idx: number) {
+    const next = zones.filter((_, i) => i !== idx);
+    await saveZones(next);
+    toast.success("Zone supprimée");
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -126,6 +155,38 @@ function SellerShop() {
         </div>
         <Button disabled={saving}>{saving ? "Enregistrement…" : shop ? "Enregistrer" : "Créer la boutique"}</Button>
       </form>
+
+      {shop && (
+        <div className="card-zandu p-6 mt-6 max-w-2xl">
+          <h2 className="font-semibold mb-1">Zones de livraison</h2>
+          <p className="text-sm text-muted-foreground mb-4">Ajoutez les villes que vous livrez avec leur tarif (CDF ou USD).</p>
+
+          {zones.length > 0 && (
+            <ul className="mb-4 divide-y divide-border rounded-md border border-border">
+              {zones.map((z, i) => (
+                <li key={i} className="flex items-center justify-between px-3 py-2 text-sm">
+                  <span><span className="font-medium">{z.city}</span> — {(z.price_cents / 100).toLocaleString("fr-FR")} {z.currency}</span>
+                  <Button variant="ghost" size="sm" onClick={() => removeZone(i)}>Retirer</Button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr,140px,110px,auto] gap-2">
+            <Input placeholder="Ville" value={zoneCity} onChange={(e) => setZoneCity(e.target.value)} maxLength={60} />
+            <Input type="number" min="0" placeholder="Prix" value={zonePrice} onChange={(e) => setZonePrice(e.target.value)} />
+            <select
+              className="rounded-md border border-input bg-surface px-2 py-2 text-sm"
+              value={zoneCurrency}
+              onChange={(e) => setZoneCurrency(e.target.value as "CDF" | "USD")}
+            >
+              <option value="CDF">CDF</option>
+              <option value="USD">USD</option>
+            </select>
+            <Button type="button" onClick={addZone}>Ajouter</Button>
+          </div>
+        </div>
+      )}
 
       {shop && (
         <div className="card-zandu p-6 mt-6 max-w-2xl">
