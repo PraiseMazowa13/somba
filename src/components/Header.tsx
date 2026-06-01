@@ -18,8 +18,9 @@ export function Header() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-5 text-sm font-medium text-muted-foreground">
-          <Link to="/products" className="hover:text-foreground" activeProps={{ className: "text-foreground" }}>Produits</Link>
-          <Link to="/shops" className="hover:text-foreground" activeProps={{ className: "text-foreground" }}>Boutiques</Link>
+          <Link to="/products" className="hover:text-foreground transition-colors" activeProps={{ className: "text-foreground" }}>Produits</Link>
+          <Link to="/categories" className="hover:text-foreground transition-colors" activeProps={{ className: "text-foreground" }}>Catégories</Link>
+          <Link to="/shops" className="hover:text-foreground transition-colors" activeProps={{ className: "text-foreground" }}>Boutiques</Link>
         </nav>
 
         <form
