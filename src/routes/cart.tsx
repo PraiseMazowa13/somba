@@ -89,7 +89,7 @@ function CartPage() {
             shop_id: g.shop.id,
             total_cents: orderTotal,
             currency,
-            status: "pending",
+            status: "pending_payment",
             channel: "whatsapp",
           })
           .select("id")
@@ -102,10 +102,11 @@ function CartPage() {
         await supabase.from("order_items").insert(
           g.items.map((it) => ({
             order_id: order!.id,
+            shop_id: g.shop.id,
             product_id: it.products.id,
+            title: it.products.title,
             quantity: it.quantity,
             unit_price_cents: it.products.price_cents,
-            currency: it.products.currency,
           }))
         );
 
