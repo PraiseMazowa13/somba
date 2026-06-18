@@ -4,10 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { slugify } from "@/lib/money";
+import { Search, Store } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — Zandu" }] }),
@@ -18,6 +18,8 @@ function AdminPage() {
   const { user, roles, loading } = useAuth();
   const qc = useQueryClient();
   const [catName, setCatName] = useState("");
+  const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending" | "suspended">("all");
 
   const { data: cats } = useQuery({
     queryKey: ["admin-cats"],
@@ -29,6 +31,20 @@ function AdminPage() {
     enabled: roles.includes("admin"),
     queryFn: async () => (await supabase.from("shops").select("*").order("created_at", { ascending: false })).data ?? [],
   });
+
+  const filtered = useMemo(() => {
+    if (!shops) return [];
+    const needle = q.trim().toLowerCase();
+    return shops.filter((s: any) => {
+      if (statusFilter !== "all" && s.status !== statusFilter) return false;
+      if (!needle) return true;
+      return (
+        s.name?.toLowerCase().includes(needle) ||
+        s.slug?.toLowerCase().includes(needle) ||
+        s.description?.toLowerCase().includes(needle)
+      );
+    });
+  }, [shops, q, statusFilter]);
 
   if (loading) return <div className="container-zandu py-16">Chargement…</div>;
   if (!user) return <div className="container-zandu py-16 text-center"><Button asChild><Link to="/login">Connexion</Link></Button></div>;
@@ -48,23 +64,6 @@ function AdminPage() {
   async function delCat(id: string) {
     await supabase.from("categories").delete().eq("id", id);
     qc.invalidateQueries({ queryKey: ["admin-cats"] });
-  }
-  async function setShopStatus(id: string, status: "approved" | "pending" | "suspended") {
-    await supabase.from("shops").update({ status }).eq("id", id);
-    qc.invalidateQueries({ queryKey: ["admin-shops"] });
-  }
-  async function rejectDeletion(id: string) {
-    await supabase.from("shops").update({ deletion_requested_at: null, deletion_reason: null }).eq("id", id);
-    toast.success("Demande de suppression refusée");
-    qc.invalidateQueries({ queryKey: ["admin-shops"] });
-  }
-  async function confirmDelete(id: string, name: string) {
-    if (!window.confirm(`Supprimer définitivement la boutique « ${name} » et tous ses produits ?`)) return;
-    await supabase.from("products").delete().eq("shop_id", id);
-    const { error } = await supabase.from("shops").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Boutique supprimée");
-    qc.invalidateQueries({ queryKey: ["admin-shops"] });
   }
 
   return (
@@ -87,35 +86,63 @@ function AdminPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold mb-4">Boutiques</h2>
+        <h2 className="text-xl font-semibold mb-4">Boutiques ({filtered.length})</h2>
+
+        {/* Recherche & filtres */}
+        <div className="card-zandu p-4 mb-4 flex flex-wrap gap-3 items-center">
+          <div className="flex-1 min-w-[240px] relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher par nom, slug, description…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <select
+            className="rounded-md border border-input bg-surface px-3 py-2 text-sm"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+          >
+            <option value="all">Tous statuts</option>
+            <option value="approved">Approuvées</option>
+            <option value="pending">En attente</option>
+            <option value="suspended">Suspendues</option>
+          </select>
+        </div>
+
         <div className="space-y-3">
-          {shops?.map((s) => (
-            <div key={s.id} className="card-zandu p-4 flex flex-wrap justify-between items-center gap-3">
-              <div>
+          {filtered.map((s: any) => (
+            <Link
+              key={s.id}
+              to="/admin/shops/$id"
+              params={{ id: s.id }}
+              className="card-zandu p-4 flex items-center gap-4 hover:shadow-[var(--shadow-elevated)] transition-shadow"
+            >
+              <div className="h-12 w-12 rounded-md bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
+                {s.logo_url ? <img src={s.logo_url} className="h-full w-full object-cover" /> : <Store className="h-5 w-5 text-muted-foreground" />}
+              </div>
+              <div className="flex-1 min-w-0">
                 <div className="font-medium flex items-center gap-2">
                   {s.name}
                   {s.deletion_requested_at && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">Suppression demandée</span>
                   )}
                 </div>
-                <div className="text-xs text-muted-foreground">/{s.slug} · {s.status}</div>
-                {s.deletion_requested_at && s.deletion_reason && (
-                  <div className="text-xs text-muted-foreground mt-1">Motif : {s.deletion_reason}</div>
-                )}
+                <div className="text-xs text-muted-foreground">/{s.slug}</div>
               </div>
-              <div className="flex gap-2 flex-wrap">
-                <Button size="sm" variant={s.status === "approved" ? "secondary" : "default"} onClick={() => setShopStatus(s.id, "approved")}>Approuver</Button>
-                <Button size="sm" variant="outline" onClick={() => setShopStatus(s.id, "pending")}>En attente</Button>
-                <Button size="sm" variant="destructive" onClick={() => setShopStatus(s.id, "suspended")}>Suspendre</Button>
-                {s.deletion_requested_at && (
-                  <>
-                    <Button size="sm" variant="destructive" onClick={() => confirmDelete(s.id, s.name)}>Confirmer suppression</Button>
-                    <Button size="sm" variant="outline" onClick={() => rejectDeletion(s.id)}>Refuser</Button>
-                  </>
-                )}
-              </div>
-            </div>
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                s.status === "approved" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" :
+                s.status === "pending" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" :
+                "bg-red-500/10 text-red-700 dark:text-red-400"
+              }`}>
+                {s.status}
+              </span>
+            </Link>
           ))}
+          {filtered.length === 0 && (
+            <div className="card-zandu p-12 text-center text-muted-foreground">Aucune boutique ne correspond.</div>
+          )}
         </div>
       </section>
     </div>
