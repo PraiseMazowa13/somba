@@ -86,11 +86,15 @@ function CartPage() {
           .from("orders")
           .insert({
             buyer_id: user!.id,
-            shop_id: g.shop.id,
             total_cents: orderTotal,
             currency,
             status: "pending_payment",
             channel: "whatsapp",
+            shipping_full_name: customerName.trim(),
+            shipping_phone: "",
+            shipping_line1: "À convenir via WhatsApp",
+            shipping_city: customerCity.trim(),
+            shipping_country: "RDC",
           })
           .select("id")
           .single();
