@@ -200,6 +200,7 @@ export type Database = {
       orders: {
         Row: {
           buyer_id: string
+          channel: string
           created_at: string
           currency: string
           id: string
@@ -214,6 +215,7 @@ export type Database = {
         }
         Insert: {
           buyer_id: string
+          channel?: string
           created_at?: string
           currency?: string
           id?: string
@@ -228,6 +230,7 @@ export type Database = {
         }
         Update: {
           buyer_id?: string
+          channel?: string
           created_at?: string
           currency?: string
           id?: string
@@ -250,6 +253,7 @@ export type Database = {
           description: string | null
           id: string
           images: string[]
+          is_active: boolean
           price_cents: number
           shop_id: string
           status: Database["public"]["Enums"]["product_status"]
@@ -264,6 +268,7 @@ export type Database = {
           description?: string | null
           id?: string
           images?: string[]
+          is_active?: boolean
           price_cents: number
           shop_id: string
           status?: Database["public"]["Enums"]["product_status"]
@@ -278,6 +283,7 @@ export type Database = {
           description?: string | null
           id?: string
           images?: string[]
+          is_active?: boolean
           price_cents?: number
           shop_id?: string
           status?: Database["public"]["Enums"]["product_status"]
@@ -344,6 +350,7 @@ export type Database = {
           slug: string
           status: Database["public"]["Enums"]["shop_status"]
           updated_at: string
+          whatsapp_number: string | null
         }
         Insert: {
           banner_url?: string | null
@@ -359,6 +366,7 @@ export type Database = {
           slug: string
           status?: Database["public"]["Enums"]["shop_status"]
           updated_at?: string
+          whatsapp_number?: string | null
         }
         Update: {
           banner_url?: string | null
@@ -374,6 +382,7 @@ export type Database = {
           slug?: string
           status?: Database["public"]["Enums"]["shop_status"]
           updated_at?: string
+          whatsapp_number?: string | null
         }
         Relationships: []
       }

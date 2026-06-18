@@ -32,7 +32,7 @@ function SellerShop() {
     },
   });
 
-  const [form, setForm] = useState({ name: "", description: "", logo_url: "", banner_url: "" });
+  const [form, setForm] = useState({ name: "", description: "", logo_url: "", banner_url: "", whatsapp_number: "" });
   const [saving, setSaving] = useState(false);
   const [zoneCity, setZoneCity] = useState("");
   const [zonePrice, setZonePrice] = useState("");
@@ -42,7 +42,7 @@ function SellerShop() {
   const zones: DeliveryZone[] = Array.isArray(shop?.delivery_zones) ? (shop?.delivery_zones as unknown as DeliveryZone[]) : [];
 
   useEffect(() => {
-    if (shop) setForm({ name: shop.name, description: shop.description ?? "", logo_url: shop.logo_url ?? "", banner_url: shop.banner_url ?? "" });
+    if (shop) setForm({ name: shop.name, description: shop.description ?? "", logo_url: shop.logo_url ?? "", banner_url: shop.banner_url ?? "", whatsapp_number: (shop as any).whatsapp_number ?? "" });
   }, [shop]);
 
   async function saveZones(next: DeliveryZone[]) {
@@ -74,12 +74,12 @@ function SellerShop() {
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setSaving(true);
     if (shop) {
-      const { error } = await supabase.from("shops").update({ name: parsed.data.name, description: parsed.data.description, logo_url: form.logo_url || null, banner_url: form.banner_url || null }).eq("id", shop.id);
+      const { error } = await supabase.from("shops").update({ name: parsed.data.name, description: parsed.data.description, logo_url: form.logo_url || null, banner_url: form.banner_url || null, whatsapp_number: form.whatsapp_number || null } as any).eq("id", shop.id);
       if (error) { setSaving(false); toast.error(error.message); return; }
       toast.success("Boutique mise à jour");
     } else {
       const slug = `${slugify(parsed.data.name)}-${Math.random().toString(36).slice(2, 6)}`;
-      const { error } = await supabase.from("shops").insert({ owner_id: user!.id, name: parsed.data.name, slug, description: parsed.data.description, logo_url: form.logo_url || null });
+      const { error } = await supabase.from("shops").insert({ owner_id: user!.id, name: parsed.data.name, slug, description: parsed.data.description, logo_url: form.logo_url || null, whatsapp_number: form.whatsapp_number || null } as any);
       if (error) { setSaving(false); toast.error(error.message); return; }
       // grant seller role
       await supabase.from("user_roles").insert({ user_id: user!.id, role: "seller" });
@@ -147,10 +147,28 @@ function SellerShop() {
         <div><Label>Nom de la boutique</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required maxLength={80} /></div>
         <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={1000} rows={4} /></div>
         <div>
+          <Label>Numéro WhatsApp</Label>
+          <Input
+            type="tel"
+            value={form.whatsapp_number}
+            onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })}
+            placeholder="ex : 243812345678"
+            maxLength={20}
+          />
+          <p className="text-xs text-muted-foreground mt-1">Indispensable pour recevoir les commandes via WhatsApp. Format international (avec indicatif pays, sans le +).</p>
+        </div>
+        <div>
           <Label>Logo</Label>
           <div className="flex items-center gap-3">
             {form.logo_url && <img src={form.logo_url} alt="logo" className="h-14 w-14 rounded-md object-cover border border-border" />}
             <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadImage("logo_url", e.target.files[0])} />
+          </div>
+        </div>
+        <div>
+          <Label>Bannière</Label>
+          <div className="space-y-2">
+            {form.banner_url && <img src={form.banner_url} alt="bannière" className="h-24 w-full rounded-md object-cover border border-border" />}
+            <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadImage("banner_url", e.target.files[0])} />
           </div>
         </div>
         <Button disabled={saving}>{saving ? "Enregistrement…" : shop ? "Enregistrer" : "Créer la boutique"}</Button>
