@@ -1,60 +1,62 @@
-## Zandu Marketplace — Plan du MVP
 
-Marketplace multi-vendeurs où chaque vendeur crée sa boutique et vend toutes catégories de produits (vêtements, chaussures, accessoires, etc.), et où les acheteurs commandent en toute sécurité. Style « Pro & confiance » (navy + blanc + accents bleu).
+# MVP Marketplace RDC — Plan d'exécution
 
-### Activation de Lovable Cloud
-Backend nécessaire (auth, base de données, stockage images) → j'active Lovable Cloud en premier.
+Objectif : livrer une version minimale mais complète couvrant acheteur, vendeur et admin. Mobile Money reporté — checkout = WhatsApp uniquement en v1.
 
-### Rôles
-- **Acheteur** (par défaut à l'inscription)
-- **Vendeur** (devient vendeur en créant sa boutique)
-- **Admin** (gère les catégories, modère)
+## 1. Acheteur — Panier & Navigation
 
-Les rôles sont stockés dans une table `user_roles` séparée (sécurité — pas dans `profiles`).
+- **`ProductCard`** : ajouter bouton "Ajouter au panier" toujours visible (en plus du CTA hover "Voir le produit"). Clic → ajoute à `cart_items`, toast "Ajouté au panier". Si non connecté → redirige `/login`.
+- **Page boutique** (`/shops/$slug` existe déjà) : vérifier qu'elle affiche bannière + logo + description + grille produits. Ajouter "Ajouter au panier" sur chaque carte.
+- **Galerie multi-images produit** : la table `products` a déjà un champ image. Ajouter une colonne `images text[]` (migration) pour stocker plusieurs URLs. La page produit affiche la galerie (déjà en place).
 
-### Pages / Routes
-- `/` — Accueil : hero, catégories, produits vedettes, boutiques mises en avant
-- `/categories/$slug` — Liste des produits par catégorie
-- `/search` — Recherche avec filtres (catégorie, prix, boutique)
-- `/products/$id` — Fiche produit + bouton « Ajouter au panier »
-- `/shops` — Annuaire des boutiques
-- `/shops/$slug` — Page boutique publique
-- `/cart` — Panier (multi-vendeurs, sous-totaux par boutique)
-- `/checkout` — Adresse de livraison + récap (paiement à brancher après)
-- `/login` + `/signup` + `/reset-password`
-- `/account` — Profil + mes commandes
-- `/seller/onboarding` — Devenir vendeur (créer sa boutique)
-- `/seller/dashboard` — Tableau de bord vendeur
-- `/seller/products` — Ses produits (CRUD)
-- `/seller/orders` — Commandes reçues
-- `/admin` — Gestion catégories + modération boutiques/produits
+## 2. Espace Vendeur
 
-### Schéma base de données
-- `profiles` (id, full_name, avatar_url, phone)
-- `user_roles` (user_id, role: 'buyer'|'seller'|'admin')
-- `categories` (id, name, slug, parent_id, image_url) — créées par l'admin
-- `shops` (id, owner_id, name, slug, description, logo_url, banner_url, status: pending|approved|suspended)
-- `products` (id, shop_id, category_id, title, description, price, stock, images[], status)
-- `carts` + `cart_items`
-- `orders` + `order_items` (avec shop_id sur chaque item pour split multi-vendeurs)
-- `addresses`
+- **`/seller/settings`** (nouvelle route) : formulaire pour modifier nom, description, logo, bannière, adresse, **numéro WhatsApp** (champ profil `phone` réutilisé pour WhatsApp — le numéro vendeur sert au checkout).
+  - Migration : ajouter `whatsapp_number text` à `shops` (plus propre que de réutiliser profile.phone, car la boutique peut avoir un numéro dédié).
+- **`/seller/products`** : remplacer la liste simple par une grille avec image, nom, prix, badge stock (En stock / Rupture), boutons : Modifier, Dupliquer, Masquer/Afficher (toggle `is_active`).
+  - Migration : ajouter `is_active boolean default true` à `products`.
+- Édition produit : dialog/page de modification (formulaire pré-rempli).
 
-RLS sur toutes les tables, fonction `has_role()` security definer.
+## 3. Checkout WhatsApp
 
-### Sécurité acheteur
-- Auth email/mot de passe + Google
-- Validation stricte des entrées (Zod) côté client ET serveur (server functions)
-- RLS : un acheteur voit seulement ses commandes ; un vendeur voit seulement les commandes de sa boutique
-- Stockage images produits via Lovable Cloud Storage avec policies
-- Pas de paiement réel dans ce MVP — checkout enregistre la commande en statut « en attente de paiement » ; on branchera Stripe/Paddle ensuite
+- **`/cart`** : remplacer "Commander" par deux boutons :
+  - "Commander via WhatsApp" → groupe les items par boutique, ouvre `wa.me/<numero>?text=<récap commande>` (un onglet par boutique).
+  - Le récap inclut : nom produit, qté, prix unitaire, total, infos client (nom + ville saisis dans un mini-form).
+- Crée une commande en statut `pending_whatsapp` côté DB pour le suivi vendeur, puis vide le panier.
 
-### Design
-- Palette : navy `#0f1b3d`, bleu `#3b6fa0`, gris clair `#f5f7fa`, blanc `#e8edf3`
-- Typo pro et lisible
-- Composants soignés, cartes produits nettes, badges de confiance
+## 4. Espace Admin
 
-### Hors scope V1 (à brancher après)
-- Paiement réel (Stripe/Paddle)
-- Avis/notes, messagerie acheteur↔vendeur, expédition/tracking, retraits vendeurs
+- **`/admin`** (existe) : ajouter onglet "Boutiques" avec :
+  - Barre de recherche (nom, ville).
+  - Filtres : statut (active/pending/suspended), catégorie.
+  - Tableau résultats → clic → **`/admin/shops/$id`** : fiche détail (infos, nombre produits, nombre commandes, CA total, boutons Activer/Suspendre).
 
-Je construis dans cet ordre : Cloud + schéma → auth → catalogue public → espace vendeur → panier/checkout → admin.
+## 5. Migrations DB
+
+```sql
+ALTER TABLE shops ADD COLUMN whatsapp_number text;
+ALTER TABLE products ADD COLUMN is_active boolean NOT NULL DEFAULT true;
+ALTER TABLE products ADD COLUMN images text[] NOT NULL DEFAULT '{}';
+ALTER TABLE orders ADD COLUMN channel text NOT NULL DEFAULT 'standard'; -- 'whatsapp' | 'standard'
+```
+
+## Hors-scope v1 (itérations suivantes)
+
+- Mobile Money intégré (M-Pesa/Orange/Airtel)
+- Avis & évaluations
+- Messagerie acheteur ↔ vendeur
+- Promotions / codes promo
+- Dashboard analytique vendeur
+- Notifications SMS / temps réel
+- Intégration livraison (Congo Express)
+
+## Ordre d'implémentation
+
+1. Migrations DB (whatsapp_number, is_active, images, channel)
+2. `ProductCard` + bouton "Ajouter au panier" universel
+3. Vérification / amélioration page boutique
+4. Checkout WhatsApp dans `/cart`
+5. `/seller/settings` + grille produits améliorée + édition
+6. Admin : recherche boutiques + page détail
+
+Chaque étape est testée avant de passer à la suivante.
