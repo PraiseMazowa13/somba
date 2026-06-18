@@ -74,12 +74,12 @@ function SellerShop() {
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setSaving(true);
     if (shop) {
-      const { error } = await supabase.from("shops").update({ name: parsed.data.name, description: parsed.data.description, logo_url: form.logo_url || null, banner_url: form.banner_url || null }).eq("id", shop.id);
+      const { error } = await supabase.from("shops").update({ name: parsed.data.name, description: parsed.data.description, logo_url: form.logo_url || null, banner_url: form.banner_url || null, whatsapp_number: form.whatsapp_number || null } as any).eq("id", shop.id);
       if (error) { setSaving(false); toast.error(error.message); return; }
       toast.success("Boutique mise à jour");
     } else {
       const slug = `${slugify(parsed.data.name)}-${Math.random().toString(36).slice(2, 6)}`;
-      const { error } = await supabase.from("shops").insert({ owner_id: user!.id, name: parsed.data.name, slug, description: parsed.data.description, logo_url: form.logo_url || null });
+      const { error } = await supabase.from("shops").insert({ owner_id: user!.id, name: parsed.data.name, slug, description: parsed.data.description, logo_url: form.logo_url || null, whatsapp_number: form.whatsapp_number || null } as any);
       if (error) { setSaving(false); toast.error(error.message); return; }
       // grant seller role
       await supabase.from("user_roles").insert({ user_id: user!.id, role: "seller" });
