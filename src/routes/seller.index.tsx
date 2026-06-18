@@ -147,10 +147,28 @@ function SellerShop() {
         <div><Label>Nom de la boutique</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required maxLength={80} /></div>
         <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={1000} rows={4} /></div>
         <div>
+          <Label>Numéro WhatsApp</Label>
+          <Input
+            type="tel"
+            value={form.whatsapp_number}
+            onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })}
+            placeholder="ex : 243812345678"
+            maxLength={20}
+          />
+          <p className="text-xs text-muted-foreground mt-1">Indispensable pour recevoir les commandes via WhatsApp. Format international (avec indicatif pays, sans le +).</p>
+        </div>
+        <div>
           <Label>Logo</Label>
           <div className="flex items-center gap-3">
             {form.logo_url && <img src={form.logo_url} alt="logo" className="h-14 w-14 rounded-md object-cover border border-border" />}
             <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadImage("logo_url", e.target.files[0])} />
+          </div>
+        </div>
+        <div>
+          <Label>Bannière</Label>
+          <div className="space-y-2">
+            {form.banner_url && <img src={form.banner_url} alt="bannière" className="h-24 w-full rounded-md object-cover border border-border" />}
+            <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadImage("banner_url", e.target.files[0])} />
           </div>
         </div>
         <Button disabled={saving}>{saving ? "Enregistrement…" : shop ? "Enregistrer" : "Créer la boutique"}</Button>
