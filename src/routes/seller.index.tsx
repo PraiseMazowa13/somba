@@ -32,7 +32,7 @@ function SellerShop() {
     },
   });
 
-  const [form, setForm] = useState({ name: "", description: "", logo_url: "", banner_url: "" });
+  const [form, setForm] = useState({ name: "", description: "", logo_url: "", banner_url: "", whatsapp_number: "" });
   const [saving, setSaving] = useState(false);
   const [zoneCity, setZoneCity] = useState("");
   const [zonePrice, setZonePrice] = useState("");
@@ -42,7 +42,7 @@ function SellerShop() {
   const zones: DeliveryZone[] = Array.isArray(shop?.delivery_zones) ? (shop?.delivery_zones as unknown as DeliveryZone[]) : [];
 
   useEffect(() => {
-    if (shop) setForm({ name: shop.name, description: shop.description ?? "", logo_url: shop.logo_url ?? "", banner_url: shop.banner_url ?? "" });
+    if (shop) setForm({ name: shop.name, description: shop.description ?? "", logo_url: shop.logo_url ?? "", banner_url: shop.banner_url ?? "", whatsapp_number: (shop as any).whatsapp_number ?? "" });
   }, [shop]);
 
   async function saveZones(next: DeliveryZone[]) {
