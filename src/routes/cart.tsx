@@ -1,10 +1,15 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { formatPrice } from "@/lib/money";
-import { Trash2, Package } from "lucide-react";
+import { Trash2, Package, MessageCircle } from "lucide-react";
+import { useState } from "react";
+import { buildWhatsAppMessage, normalizeWhatsApp } from "@/lib/cart";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({ meta: [{ title: "Panier — Zandu" }] }),
@@ -13,20 +18,22 @@ export const Route = createFileRoute("/cart")({
 
 function CartPage() {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
   const qc = useQueryClient();
+  const [customerName, setCustomerName] = useState("");
+  const [customerCity, setCustomerCity] = useState("");
+  const [sending, setSending] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["cart", user?.id],
     enabled: !!user,
     queryFn: async () => {
       const { data: cart } = await supabase.from("carts").select("id").eq("user_id", user!.id).maybeSingle();
-      if (!cart) return { items: [] as any[] };
+      if (!cart) return { items: [] as any[], cart_id: null as string | null };
       const { data: items } = await supabase
         .from("cart_items")
-        .select("id,quantity,products(id,title,price_cents,currency,images,stock,shops(id,name,slug))")
+        .select("id,quantity,products(id,title,price_cents,currency,images,stock,shops(id,name,slug,whatsapp_number))")
         .eq("cart_id", cart.id);
-      return { items: items ?? [] };
+      return { items: items ?? [], cart_id: cart.id };
     },
   });
 
@@ -42,10 +49,94 @@ function CartPage() {
   const items = data?.items ?? [];
   const total = items.reduce((sum: number, it: any) => sum + (it.products?.price_cents ?? 0) * it.quantity, 0);
 
+  // Grouper par boutique
+  const byShop = new Map<string, { shop: any; items: any[] }>();
+  for (const it of items) {
+    const shop = it.products?.shops;
+    if (!shop) continue;
+    if (!byShop.has(shop.id)) byShop.set(shop.id, { shop, items: [] });
+    byShop.get(shop.id)!.items.push(it);
+  }
+
   async function setQty(id: string, q: number) {
     if (q <= 0) { await supabase.from("cart_items").delete().eq("id", id); }
     else { await supabase.from("cart_items").update({ quantity: q }).eq("id", id); }
     qc.invalidateQueries({ queryKey: ["cart"] });
+  }
+
+  async function sendWhatsApp() {
+    if (!customerName.trim() || !customerCity.trim()) {
+      toast.error("Renseignez votre nom et votre ville");
+      return;
+    }
+    const groups = Array.from(byShop.values());
+    const missing = groups.filter((g) => !normalizeWhatsApp(g.shop.whatsapp_number));
+    if (missing.length > 0) {
+      toast.error(`Numéro WhatsApp manquant pour : ${missing.map((m) => m.shop.name).join(", ")}`);
+      return;
+    }
+
+    setSending(true);
+    try {
+      // Créer une commande par boutique (statut pending_whatsapp)
+      for (const g of groups) {
+        const orderTotal = g.items.reduce((s, it) => s + (it.products?.price_cents ?? 0) * it.quantity, 0);
+        const currency = g.items[0]?.products?.currency ?? "CDF";
+        const { data: order, error: orderErr } = await supabase
+          .from("orders")
+          .insert({
+            buyer_id: user!.id,
+            shop_id: g.shop.id,
+            total_cents: orderTotal,
+            currency,
+            status: "pending",
+            channel: "whatsapp",
+          })
+          .select("id")
+          .single();
+        if (orderErr) {
+          console.error(orderErr);
+          continue;
+        }
+        // Insérer les items
+        await supabase.from("order_items").insert(
+          g.items.map((it) => ({
+            order_id: order!.id,
+            product_id: it.products.id,
+            quantity: it.quantity,
+            unit_price_cents: it.products.price_cents,
+            currency: it.products.currency,
+          }))
+        );
+
+        // Ouvrir WhatsApp
+        const phone = normalizeWhatsApp(g.shop.whatsapp_number)!;
+        const msg = buildWhatsAppMessage({
+          shopName: g.shop.name,
+          items: g.items.map((it) => ({
+            title: it.products.title,
+            quantity: it.quantity,
+            price_cents: it.products.price_cents,
+            currency: it.products.currency,
+          })),
+          customerName: customerName.trim(),
+          customerCity: customerCity.trim(),
+        });
+        const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+        window.open(url, "_blank");
+      }
+
+      // Vider le panier
+      if (data?.cart_id) {
+        await supabase.from("cart_items").delete().eq("cart_id", data.cart_id);
+      }
+      toast.success("Commandes envoyées via WhatsApp");
+      qc.invalidateQueries({ queryKey: ["cart"] });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erreur");
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -57,7 +148,7 @@ function CartPage() {
           <Button asChild><Link to="/products">Voir les produits</Link></Button>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-[1fr,360px] gap-8">
+        <div className="grid lg:grid-cols-[1fr,380px] gap-8">
           <div className="space-y-3">
             {items.map((it: any) => (
               <div key={it.id} className="card-zandu p-4 flex gap-4">
@@ -74,16 +165,36 @@ function CartPage() {
                     <Button variant="ghost" size="sm" onClick={() => setQty(it.id, 0)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>
-                <div className="font-semibold text-right">{formatPrice((it.products?.price_cents ?? 0) * it.quantity)}</div>
+                <div className="font-semibold text-right">{formatPrice((it.products?.price_cents ?? 0) * it.quantity, it.products?.currency)}</div>
               </div>
             ))}
           </div>
-          <div className="card-zandu p-6 h-fit">
-            <h3 className="font-semibold mb-4">Récapitulatif</h3>
-            <div className="flex justify-between text-sm mb-2"><span>Sous-total</span><span>{formatPrice(total)}</span></div>
-            <div className="flex justify-between text-sm mb-4 text-muted-foreground"><span>Livraison</span><span>Calculée à l'étape suivante</span></div>
-            <div className="flex justify-between font-bold text-lg border-t border-border pt-4"><span>Total</span><span>{formatPrice(total)}</span></div>
-            <Button className="w-full mt-6" size="lg" onClick={() => navigate({ to: "/checkout" })}>Passer la commande</Button>
+          <div className="card-zandu p-6 h-fit space-y-4">
+            <h3 className="font-semibold">Récapitulatif</h3>
+            <div className="flex justify-between text-sm"><span>Sous-total</span><span>{formatPrice(total)}</span></div>
+            <div className="flex justify-between font-bold text-lg border-t border-border pt-3"><span>Total</span><span>{formatPrice(total)}</span></div>
+
+            <div className="border-t border-border pt-4 space-y-3">
+              <p className="text-sm font-medium">Finaliser via WhatsApp</p>
+              <p className="text-xs text-muted-foreground">Vous discuterez directement avec {byShop.size > 1 ? "chaque vendeur" : "le vendeur"} pour la livraison et le paiement (Mobile Money, cash).</p>
+              <div>
+                <Label className="text-xs">Votre nom</Label>
+                <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nom complet" maxLength={80} />
+              </div>
+              <div>
+                <Label className="text-xs">Votre ville</Label>
+                <Input value={customerCity} onChange={(e) => setCustomerCity(e.target.value)} placeholder="Kinshasa, Lubumbashi…" maxLength={60} />
+              </div>
+              <Button
+                className="w-full bg-[#25D366] hover:bg-[#1ebe5b] text-white"
+                size="lg"
+                onClick={sendWhatsApp}
+                disabled={sending}
+              >
+                <MessageCircle className="h-5 w-5 mr-2" />
+                {sending ? "Envoi…" : `Commander via WhatsApp${byShop.size > 1 ? ` (${byShop.size} boutiques)` : ""}`}
+              </Button>
+            </div>
           </div>
         </div>
       )}
