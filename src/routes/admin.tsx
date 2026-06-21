@@ -93,13 +93,42 @@ function AdminPage() {
     qc.invalidateQueries({ queryKey: ["admin-cats"] });
   }
 
-  return (
-    <div className="container-zandu py-10 space-y-10">
-      <section>
-        <h1 className="text-3xl font-bold mb-6">Administration</h1>
+  const statusCounts = useMemo(() => {
+    const c = { all: shops?.length ?? 0, approved: 0, pending: 0, suspended: 0 } as Record<string, number>;
+    (shops ?? []).forEach((s: any) => { if (c[s.status] != null) c[s.status]++; });
+    return c;
+  }, [shops]);
 
-        {/* Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
+  const tabs: { id: Section; label: string; icon: any }[] = [
+    { id: "overview", label: "Vue d'ensemble", icon: DollarSign },
+    { id: "categories", label: "Catégories", icon: Package },
+    { id: "shops", label: "Boutiques", icon: Store },
+  ];
+
+  const visibleCats = showAllCats ? cats ?? [] : (cats ?? []).slice(0, 6);
+
+  return (
+    <div className="container-zandu py-10 space-y-6">
+      <h1 className="text-3xl font-bold">Administration</h1>
+
+      {/* Navigation par sections */}
+      <div className="flex flex-wrap gap-2">
+        {tabs.map((t) => (
+          <Button
+            key={t.id}
+            variant={section === t.id ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSection(t.id)}
+            className="gap-2"
+          >
+            <t.icon className="h-4 w-4" />
+            {t.label}
+          </Button>
+        ))}
+      </div>
+
+      {section === "overview" && (
+        <section className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
             { icon: Store, label: "Boutiques", value: overview?.shops ?? "…" },
             { icon: Package, label: "Produits", value: overview?.products ?? "…" },
@@ -115,83 +144,118 @@ function AdminPage() {
               </div>
             </div>
           ))}
-        </div>
+        </section>
+      )}
 
-        <h2 className="text-xl font-semibold mb-4">Catégories</h2>
-        <form onSubmit={addCat} className="card-zandu p-4 flex gap-3 mb-4 max-w-xl">
-          <Input placeholder="Nouvelle catégorie" value={catName} onChange={(e) => setCatName(e.target.value)} maxLength={60} />
-          <Button>Ajouter</Button>
-        </form>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {cats?.map((c) => (
-            <div key={c.id} className="card-zandu p-3 flex items-center justify-between">
-              <div><div className="font-medium">{c.name}</div><div className="text-xs text-muted-foreground">/{c.slug}</div></div>
-              <Button variant="ghost" size="sm" onClick={() => delCat(c.id)}>Supprimer</Button>
+      {section === "categories" && (
+        <section>
+          <form onSubmit={addCat} className="card-zandu p-4 flex gap-3 mb-4 max-w-xl">
+            <Input placeholder="Nouvelle catégorie" value={catName} onChange={(e) => setCatName(e.target.value)} maxLength={60} />
+            <Button>Ajouter</Button>
+          </form>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {visibleCats.map((c) => (
+              <div key={c.id} className="card-zandu p-3 flex items-center justify-between">
+                <div><div className="font-medium">{c.name}</div><div className="text-xs text-muted-foreground">/{c.slug}</div></div>
+                <Button variant="ghost" size="sm" onClick={() => delCat(c.id)}>Supprimer</Button>
+              </div>
+            ))}
+          </div>
+          {(cats?.length ?? 0) > 6 && (
+            <div className="mt-4 text-center">
+              <Button variant="outline" size="sm" onClick={() => setShowAllCats((v) => !v)}>
+                {showAllCats ? "Réduire" : `Voir tout (${cats?.length})`}
+              </Button>
             </div>
-          ))}
-        </div>
-      </section>
+          )}
+          {(cats?.length ?? 0) === 0 && (
+            <div className="card-zandu p-8 text-center text-muted-foreground">Aucune catégorie.</div>
+          )}
+        </section>
+      )}
 
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Boutiques ({filtered.length})</h2>
+      {section === "shops" && (
+        <section>
+          {/* Boutons de filtre rapide par statut */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {([
+              { id: "pending", label: "En attente", tone: "bg-amber-500/10 text-amber-700 dark:text-amber-400" },
+              { id: "approved", label: "Approuvées", tone: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" },
+              { id: "suspended", label: "Suspendues", tone: "bg-red-500/10 text-red-700 dark:text-red-400" },
+              { id: "all", label: "Toutes", tone: "bg-secondary text-foreground" },
+            ] as const).map((f) => (
+              <Button
+                key={f.id}
+                variant={statusFilter === f.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter(f.id)}
+                className="gap-2"
+              >
+                {f.label}
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${statusFilter === f.id ? "bg-primary-foreground/20" : f.tone}`}>
+                  {statusCounts[f.id] ?? 0}
+                </span>
+              </Button>
+            ))}
+          </div>
 
-        {/* Recherche & filtres */}
-        <div className="card-zandu p-4 mb-4 flex flex-wrap gap-3 items-center">
-          <div className="flex-1 min-w-[240px] relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          {/* Recherche */}
+          <div className="card-zandu p-3 mb-4 relative">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher par nom, slug, description…"
+              placeholder="Rechercher une boutique…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              className="pl-9"
+              className="pl-9 border-0 shadow-none focus-visible:ring-0"
             />
           </div>
-          <select
-            className="rounded-md border border-input bg-surface px-3 py-2 text-sm"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-          >
-            <option value="all">Tous statuts</option>
-            <option value="approved">Approuvées</option>
-            <option value="pending">En attente</option>
-            <option value="suspended">Suspendues</option>
-          </select>
-        </div>
 
-        <div className="space-y-3">
-          {filtered.map((s: any) => (
-            <Link
-              key={s.id}
-              to="/admin/shops/$id"
-              params={{ id: s.id }}
-              className="card-zandu p-4 flex items-center gap-4 hover:shadow-[var(--shadow-elevated)] transition-shadow"
-            >
-              <div className="h-12 w-12 rounded-md bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
-                {s.logo_url ? <img src={s.logo_url} className="h-full w-full object-cover" /> : <Store className="h-5 w-5 text-muted-foreground" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium flex items-center gap-2">
-                  {s.name}
-                  {s.deletion_requested_at && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">Suppression demandée</span>
-                  )}
+          {q.trim() === "" && statusFilter === "all" ? (
+            <div className="card-zandu p-12 text-center text-muted-foreground">
+              Sélectionnez un filtre ou recherchez une boutique pour afficher les résultats.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.slice(0, 50).map((s: any) => (
+                <Link
+                  key={s.id}
+                  to="/admin/shops/$id"
+                  params={{ id: s.id }}
+                  className="card-zandu p-4 flex items-center gap-4 hover:shadow-[var(--shadow-elevated)] transition-shadow"
+                >
+                  <div className="h-12 w-12 rounded-md bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {s.logo_url ? <img src={s.logo_url} className="h-full w-full object-cover" /> : <Store className="h-5 w-5 text-muted-foreground" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium flex items-center gap-2">
+                      {s.name}
+                      {s.deletion_requested_at && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">Suppression demandée</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">/{s.slug}</div>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    s.status === "approved" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" :
+                    s.status === "pending" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" :
+                    "bg-red-500/10 text-red-700 dark:text-red-400"
+                  }`}>
+                    {s.status}
+                  </span>
+                </Link>
+              ))}
+              {filtered.length === 0 && (
+                <div className="card-zandu p-12 text-center text-muted-foreground">Aucune boutique ne correspond.</div>
+              )}
+              {filtered.length > 50 && (
+                <div className="text-center text-xs text-muted-foreground">
+                  {filtered.length - 50} résultats supplémentaires masqués — affinez votre recherche.
                 </div>
-                <div className="text-xs text-muted-foreground">/{s.slug}</div>
-              </div>
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                s.status === "approved" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" :
-                s.status === "pending" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" :
-                "bg-red-500/10 text-red-700 dark:text-red-400"
-              }`}>
-                {s.status}
-              </span>
-            </Link>
-          ))}
-          {filtered.length === 0 && (
-            <div className="card-zandu p-12 text-center text-muted-foreground">Aucune boutique ne correspond.</div>
+              )}
+            </div>
           )}
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 }
