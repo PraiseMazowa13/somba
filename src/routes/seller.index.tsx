@@ -229,3 +229,58 @@ function SellerShop() {
     </div>
   );
 }
+
+function SellerDashboard({ shopId, slug }: { shopId: string; slug: string }) {
+  const { data: stats } = useQuery({
+    queryKey: ["seller-stats", shopId],
+    queryFn: async () => {
+      const [{ count: productCount }, { data: orderItems }] = await Promise.all([
+        supabase.from("products").select("id", { count: "exact", head: true }).eq("shop_id", shopId),
+        supabase.from("order_items").select("order_id,unit_price_cents,quantity").eq("shop_id", shopId),
+      ]);
+      const orderIds = new Set((orderItems ?? []).map((o: any) => o.order_id));
+      const revenue = (orderItems ?? []).reduce((s: number, oi: any) => s + oi.unit_price_cents * oi.quantity, 0);
+      return { productCount: productCount ?? 0, orderCount: orderIds.size, revenue };
+    },
+  });
+
+  async function share() {
+    const url = `${window.location.origin}/shops/${slug}`;
+    try {
+      if (navigator.share) await navigator.share({ title: "Ma boutique", url });
+      else { await navigator.clipboard.writeText(url); toast.success("Lien copié"); }
+    } catch { /* cancelled */ }
+  }
+
+  const cards = [
+    { icon: Package, label: "Produits", value: stats?.productCount ?? "…" },
+    { icon: ShoppingBag, label: "Commandes", value: stats?.orderCount ?? "…" },
+    { icon: DollarSign, label: "Chiffre d'affaires", value: stats ? formatPrice(stats.revenue) : "…" },
+  ];
+
+  return (
+    <div className="mb-6 space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {cards.map((c) => (
+          <div key={c.label} className="card-zandu p-4 flex items-center gap-3">
+            <c.icon className="h-7 w-7 text-primary" />
+            <div>
+              <div className="text-lg font-bold leading-tight">{c.value}</div>
+              <div className="text-xs text-muted-foreground">{c.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="card-zandu p-4 flex flex-wrap items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="text-xs text-muted-foreground">Lien de votre boutique</div>
+          <div className="text-sm font-mono truncate">/shops/{slug}</div>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <a href={`/shops/${slug}`} target="_blank" rel="noopener"><Eye className="h-4 w-4 mr-1" /> Voir</a>
+        </Button>
+        <Button onClick={share} size="sm"><Share2 className="h-4 w-4 mr-1" /> Partager</Button>
+      </div>
+    </div>
+  );
+}
