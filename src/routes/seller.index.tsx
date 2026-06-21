@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { slugify } from "@/lib/money";
+import { slugify, formatPrice } from "@/lib/money";
+import { Package, ShoppingBag, DollarSign, Eye, Share2 } from "lucide-react";
 
 export const Route = createFileRoute("/seller/")({
   component: SellerShop,
@@ -130,10 +131,12 @@ function SellerShop() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-1">{shop ? "Ma boutique" : "Créer ma boutique"}</h1>
+      <h1 className="text-2xl font-bold mb-1">{shop ? "Tableau de bord" : "Créer ma boutique"}</h1>
       <p className="text-muted-foreground mb-6">
         {shop ? `Statut : ${statusLabel}` : "Renseignez les informations de votre boutique pour commencer à vendre."}
       </p>
+
+      {shop && <SellerDashboard shopId={shop.id} slug={shop.slug} />}
 
       {shop?.deletion_requested_at && (
         <div className="card-zandu p-4 mb-6 border-destructive/40 bg-destructive/5">
