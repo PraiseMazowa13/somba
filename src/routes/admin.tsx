@@ -15,12 +15,16 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
+type Section = "overview" | "categories" | "shops";
+
 function AdminPage() {
   const { user, roles, loading } = useAuth();
   const qc = useQueryClient();
   const [catName, setCatName] = useState("");
   const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending" | "suspended">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending" | "suspended">("pending");
+  const [section, setSection] = useState<Section>("overview");
+  const [showAllCats, setShowAllCats] = useState(false);
 
   const { data: cats } = useQuery({
     queryKey: ["admin-cats"],
