@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { slugify } from "@/lib/money";
-import { Search, Store } from "lucide-react";
+import { Search, Store, Package, ShoppingBag, DollarSign, Users } from "lucide-react";
+import { formatPrice } from "@/lib/money";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — Zandu" }] }),
@@ -30,6 +31,28 @@ function AdminPage() {
     queryKey: ["admin-shops"],
     enabled: roles.includes("admin"),
     queryFn: async () => (await supabase.from("shops").select("*").order("created_at", { ascending: false })).data ?? [],
+  });
+
+  const { data: overview } = useQuery({
+    queryKey: ["admin-overview"],
+    enabled: roles.includes("admin"),
+    queryFn: async () => {
+      const [shopsCount, productsCount, ordersCount, items, users] = await Promise.all([
+        supabase.from("shops").select("id", { count: "exact", head: true }),
+        supabase.from("products").select("id", { count: "exact", head: true }),
+        supabase.from("orders").select("id", { count: "exact", head: true }),
+        supabase.from("order_items").select("unit_price_cents,quantity"),
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
+      ]);
+      const revenue = (items.data ?? []).reduce((s: number, oi: any) => s + oi.unit_price_cents * oi.quantity, 0);
+      return {
+        shops: shopsCount.count ?? 0,
+        products: productsCount.count ?? 0,
+        orders: ordersCount.count ?? 0,
+        users: users.count ?? 0,
+        revenue,
+      };
+    },
   });
 
   const filtered = useMemo(() => {
@@ -70,6 +93,26 @@ function AdminPage() {
     <div className="container-zandu py-10 space-y-10">
       <section>
         <h1 className="text-3xl font-bold mb-6">Administration</h1>
+
+        {/* Overview */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
+          {[
+            { icon: Store, label: "Boutiques", value: overview?.shops ?? "…" },
+            { icon: Package, label: "Produits", value: overview?.products ?? "…" },
+            { icon: ShoppingBag, label: "Commandes", value: overview?.orders ?? "…" },
+            { icon: Users, label: "Utilisateurs", value: overview?.users ?? "…" },
+            { icon: DollarSign, label: "CA total", value: overview ? formatPrice(overview.revenue) : "…" },
+          ].map((c) => (
+            <div key={c.label} className="card-zandu p-4 flex items-center gap-3">
+              <c.icon className="h-6 w-6 text-primary" />
+              <div>
+                <div className="text-lg font-bold leading-tight">{c.value}</div>
+                <div className="text-xs text-muted-foreground">{c.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
         <h2 className="text-xl font-semibold mb-4">Catégories</h2>
         <form onSubmit={addCat} className="card-zandu p-4 flex gap-3 mb-4 max-w-xl">
           <Input placeholder="Nouvelle catégorie" value={catName} onChange={(e) => setCatName(e.target.value)} maxLength={60} />

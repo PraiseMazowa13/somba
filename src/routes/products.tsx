@@ -58,7 +58,7 @@ function ProductsPage() {
     queryFn: async () => {
       let query = supabase
         .from("products")
-        .select("id,title,price_cents,currency,images,shops!inner(name,slug,status)")
+        .select("id,title,price_cents,currency,images,shops!inner(name,slug,logo_url,status)")
         .eq("status", "active")
         .eq("shops.status", "approved")
         .limit(60);
@@ -185,7 +185,7 @@ function ProductsPage() {
         </div>
 
         {products && products.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {products.map((p) => <ProductCard key={p.id} p={p} />)}
           </div>
         ) : !isLoading ? (

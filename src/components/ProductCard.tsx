@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { formatPrice } from "@/lib/money";
-import { Package, ShoppingCart, ArrowRight } from "lucide-react";
+import { Package, Plus, Store } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { addToCart } from "@/lib/cart";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ export type ProductCardData = {
   price_cents: number;
   currency: string;
   images: string[] | null;
-  shops?: { name: string; slug: string } | null;
+  shops?: { name: string; slug: string; logo_url?: string | null } | null;
 };
 
 export function ProductCard({ p }: { p: ProductCardData }) {
@@ -47,37 +47,45 @@ export function ProductCard({ p }: { p: ProductCardData }) {
     <Link
       to="/products/$id"
       params={{ id: p.id }}
-      className="card-zandu group relative overflow-hidden flex flex-col transition-all duration-300 ease-out hover:shadow-[var(--shadow-elevated)] hover:-translate-y-1"
+      className="card-zandu group relative overflow-hidden flex flex-col transition-all duration-300 ease-out hover:shadow-[var(--shadow-elevated)] hover:-translate-y-0.5"
     >
       <div className="relative aspect-square bg-secondary flex items-center justify-center overflow-hidden">
         {img ? (
           <img
             src={img}
             alt={p.title}
-            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
             loading="lazy"
           />
         ) : (
-          <Package className="h-12 w-12 text-muted-foreground" />
+          <Package className="h-8 w-8 text-muted-foreground" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      </div>
-      <div className="p-3 flex-1 flex flex-col gap-1">
-        <div className="text-sm font-medium line-clamp-2">{p.title}</div>
-        {p.shops && <div className="text-xs text-muted-foreground">par {p.shops.name}</div>}
-        <div className="mt-auto pt-2 flex items-center justify-between gap-2">
-          <span className="font-semibold text-primary">{formatPrice(p.price_cents, p.currency)}</span>
-          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform duration-300 group-hover:translate-x-1 group-hover:text-primary" />
-        </div>
+
+        {/* Floating + button */}
         <button
           type="button"
           onClick={handleAdd}
           disabled={adding}
-          className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60"
+          aria-label="Ajouter au panier"
+          className="absolute bottom-1.5 right-1.5 h-8 w-8 rounded-full bg-primary text-primary-foreground shadow-md grid place-items-center transition-all hover:scale-110 active:scale-95 disabled:opacity-60"
         >
-          <ShoppingCart className="h-4 w-4" />
-          {adding ? "Ajout…" : "Ajouter au panier"}
+          <Plus className="h-4 w-4" strokeWidth={2.5} />
         </button>
+      </div>
+
+      <div className="p-2 flex-1 flex flex-col gap-0.5">
+        <div className="text-xs font-medium line-clamp-2 leading-tight">{p.title}</div>
+        {p.shops && (
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+            {p.shops.logo_url ? (
+              <img src={p.shops.logo_url} alt="" className="h-3.5 w-3.5 rounded-full object-cover" />
+            ) : (
+              <Store className="h-3 w-3" />
+            )}
+            <span className="truncate">{p.shops.name}</span>
+          </div>
+        )}
+        <div className="mt-1 font-semibold text-primary text-sm">{formatPrice(p.price_cents, p.currency)}</div>
       </div>
     </Link>
   );

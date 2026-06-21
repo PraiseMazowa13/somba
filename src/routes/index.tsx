@@ -16,7 +16,7 @@ function Index() {
     queryFn: async () => {
       const { data } = await supabase
         .from("products")
-        .select("id,title,price_cents,currency,images,shops(name,slug)")
+        .select("id,title,price_cents,currency,images,shops(name,slug,logo_url)")
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(8);
@@ -93,7 +93,7 @@ function Index() {
           <Link to="/products" className="text-sm text-brand hover:underline">Voir plus</Link>
         </div>
         {products && products.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {products.map((p) => <ProductCard key={p.id} p={p} />)}
           </div>
         ) : (
