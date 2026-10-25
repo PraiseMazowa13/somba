@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
@@ -38,16 +38,19 @@
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-surface: var(--surface);
+  --color-promo: var(--promo);
+  --color-promo-foreground: var(--promo-foreground);
+  --color-heart: var(--heart);
 
   --shadow-soft: 0 2px 8px -2px oklch(0.2 0.04 260 / 0.06), 0 4px 16px -4px oklch(0.2 0.04 260 / 0.06);
   --shadow-elevated: 0 8px 30px -8px oklch(0.2 0.04 260 / 0.18);
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 1rem;
 
   /* Navy + bleu — palette "Pro & confiance" */
-  --background: oklch(0.985 0.005 250);          /* #f5f7fa */
+  --background: oklch(0.975 0.01 255);
   --foreground: oklch(0.18 0.05 265);            /* navy text */
   --surface: oklch(1 0 0);                       /* card surface */
 
@@ -57,10 +60,13 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.05 265);
 
-  --primary: oklch(0.22 0.07 265);               /* deep navy #0f1b3d */
-  --primary-foreground: oklch(0.985 0.005 250);
+  --primary: oklch(0.55 0.21 262);
+  --primary-foreground: oklch(1 0 0);
 
-  --brand: oklch(0.52 0.12 250);                 /* bleu confiance #3b6fa0 */
+  --brand: oklch(0.55 0.21 262);
+  --promo: oklch(0.88 0.17 95);
+  --promo-foreground: oklch(0.2 0.04 265);
+  --heart: oklch(0.6 0.22 22);
   --brand-foreground: oklch(1 0 0);
 
   --secondary: oklch(0.95 0.012 250);            /* #e8edf3 */
@@ -133,13 +139,18 @@
 @layer components {
   .container-zandu { max-width: 1200px; margin-inline: auto; padding-inline: 1rem; }
   .gradient-hero {
-    background: linear-gradient(135deg, oklch(0.22 0.07 265) 0%, oklch(0.32 0.1 255) 60%, oklch(0.52 0.12 250) 100%);
+    background: linear-gradient(135deg, oklch(0.5 0.22 264) 0%, oklch(0.6 0.19 255) 100%);
   }
   .card-zandu {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-xl);
     box-shadow: var(--shadow-soft);
   }
 }
 
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
