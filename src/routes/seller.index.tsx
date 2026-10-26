@@ -12,9 +12,11 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { slugify, formatPrice } from "@/lib/money";
-import { Package, ShoppingBag, DollarSign, Eye, Share2, Settings, Store, TrendingUp, AlertTriangle, Plus, ClipboardList } from "lucide-react";
+import { sellerStats } from "@/lib/seller-stats";
+import { Package, ShoppingBag, DollarSign, Eye, Share2, Settings, Store, TrendingUp, AlertTriangle, Plus, ClipboardList, RefreshCw, ArrowUpRight } from "lucide-react";
 
 export const Route = createFileRoute("/seller/")({
+  head: () => ({ meta: [{ title: "Tableau de bord vendeur — Zandu" }, { name: "description", content: "Suivez vos ventes, commandes et produits dans votre espace vendeur Zandu." }, { property: "og:title", content: "Tableau de bord vendeur — Zandu" }, { property: "og:description", content: "Suivez vos ventes, commandes et produits dans votre espace vendeur Zandu." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: SellerShop,
 });
 
@@ -26,11 +28,13 @@ const schema = z.object({
 function SellerShop() {
   const { user, refreshRoles } = useAuth();
   const qc = useQueryClient();
-  const { data: shop, isLoading } = useQuery({
+  const { data: shop, isLoading, error: shopError, refetch } = useQuery({
     queryKey: ["my-shop", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase.from("shops").select("*").eq("owner_id", user!.id).maybeSingle();
+      if (!user) return null;
+      const { data, error } = await supabase.from("shops").select("*").eq("owner_id", user.id).maybeSingle();
+      if (error) throw error;
       return data;
     },
   });
@@ -45,14 +49,15 @@ function SellerShop() {
   const zones: DeliveryZone[] = Array.isArray(shop?.delivery_zones) ? (shop?.delivery_zones as unknown as DeliveryZone[]) : [];
 
   useEffect(() => {
-    if (shop) setForm({ name: shop.name, description: shop.description ?? "", logo_url: shop.logo_url ?? "", banner_url: shop.banner_url ?? "", whatsapp_number: (shop as any).whatsapp_number ?? "" });
+    if (shop) setForm({ name: shop.name, description: shop.description ?? "", logo_url: shop.logo_url ?? "", banner_url: shop.banner_url ?? "", whatsapp_number: shop.whatsapp_number ?? "" });
   }, [shop]);
 
   async function saveZones(next: DeliveryZone[]) {
-    if (!shop) return;
+    if (!shop) return false;
     const { error } = await supabase.from("shops").update({ delivery_zones: next as any }).eq("id", shop.id);
-    if (error) { toast.error(error.message); return; }
-    qc.invalidateQueries({ queryKey: ["my-shop"] });
+    if (error) { toast.error(error.message); return false; }
+    await qc.invalidateQueries({ queryKey: ["my-shop"] });
+    return true;
   }
 
   async function addZone() {
@@ -60,19 +65,20 @@ function SellerShop() {
     const price = Number(zonePrice);
     if (!city || !Number.isFinite(price) || price < 0) { toast.error("Ville et prix valides requis"); return; }
     const next = [...zones, { city, price_cents: Math.round(price * 100), currency: zoneCurrency }];
-    await saveZones(next);
+    if (!(await saveZones(next))) return;
     setZoneCity(""); setZonePrice("");
     toast.success("Zone de livraison ajoutée");
   }
 
   async function removeZone(idx: number) {
     const next = zones.filter((_, i) => i !== idx);
-    await saveZones(next);
+    if (!(await saveZones(next))) return;
     toast.success("Zone supprimée");
   }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    if (!user) return;
     const parsed = schema.safeParse(form);
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setSaving(true);
@@ -82,10 +88,10 @@ function SellerShop() {
       toast.success("Boutique mise à jour");
     } else {
       const slug = `${slugify(parsed.data.name)}-${Math.random().toString(36).slice(2, 6)}`;
-      const { error } = await supabase.from("shops").insert({ owner_id: user!.id, name: parsed.data.name, slug, description: parsed.data.description, logo_url: form.logo_url || null, whatsapp_number: form.whatsapp_number || null } as any);
+      const { error } = await supabase.from("shops").insert({ owner_id: user.id, name: parsed.data.name, slug, description: parsed.data.description, logo_url: form.logo_url || null, banner_url: form.banner_url || null, whatsapp_number: form.whatsapp_number || null });
       if (error) { setSaving(false); toast.error(error.message); return; }
       // grant seller role
-      await supabase.from("user_roles").insert({ user_id: user!.id, role: "seller" });
+      await supabase.from("user_roles").insert({ user_id: user.id, role: "seller" });
       await refreshRoles();
       toast.success("Boutique créée ! En attente d'approbation.");
     }
@@ -94,7 +100,8 @@ function SellerShop() {
   }
 
   async function uploadImage(field: "logo_url" | "banner_url", file: File) {
-    const path = `${user!.id}/${field}-${Date.now()}-${file.name}`;
+    if (!user) return;
+    const path = `${user.id}/${field}-${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("shop-assets").upload(path, file, { upsert: true });
     if (error) { toast.error(error.message); return; }
     const { data } = supabase.storage.from("shop-assets").getPublicUrl(path);
@@ -127,7 +134,8 @@ function SellerShop() {
     qc.invalidateQueries({ queryKey: ["my-shop"] });
   }
 
-  if (isLoading) return <div>Chargement…</div>;
+  if (isLoading) return <div role="status" className="py-12 text-muted-foreground">Chargement de votre boutique…</div>;
+  if (shopError) return <div role="alert" className="space-y-3 py-8"><p>Impossible de charger votre boutique.</p><Button variant="outline" onClick={() => refetch()}><RefreshCw className="mr-2 h-4 w-4" />Réessayer</Button></div>;
 
   const statusLabel = shop?.status === "approved" ? "Approuvée" : shop?.status === "pending" ? "En attente" : "Suspendue";
   const statusTone = shop?.status === "approved" ? "bg-primary/10 text-primary" : shop?.status === "pending" ? "bg-secondary text-foreground" : "bg-destructive/10 text-destructive";
@@ -172,16 +180,17 @@ function SellerShop() {
   return (
     <div className="space-y-6">
       {/* En-tête pro */}
-      <div className="card-zandu overflow-hidden">
-        <div className="h-24 sm:h-32 bg-gradient-to-r from-primary to-primary/60 relative">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
+        <div className="h-24 sm:h-32 bg-secondary relative">
           {shop.banner_url && <img src={shop.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover" />}
         </div>
-        <div className="p-4 flex flex-wrap items-end gap-4 -mt-10 relative">
+        <div className="p-4 flex flex-wrap items-end gap-4 relative">
           <div className="h-16 w-16 rounded-xl border-4 border-background bg-secondary overflow-hidden flex items-center justify-center">
             {shop.logo_url ? <img src={shop.logo_url} alt="" className="h-full w-full object-cover" /> : <Store className="h-6 w-6 text-muted-foreground" />}
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold truncate">{shop.name}</h1>
+            <p className="text-xs text-muted-foreground mb-1">Tableau de bord vendeur</p>
+            <h1 className="text-xl font-bold break-words">{shop.name}</h1>
             <span className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${statusTone}`}>{statusLabel}</span>
           </div>
           <Sheet>
@@ -209,7 +218,7 @@ function SellerShop() {
                       ))}
                     </ul>
                   )}
-                  <div className="grid grid-cols-[1fr,100px,80px] gap-2">
+                  <div className="grid grid-cols-[minmax(0,1fr)_90px_70px] gap-2">
                     <Input placeholder="Ville" value={zoneCity} onChange={(e) => setZoneCity(e.target.value)} maxLength={60} />
                     <Input type="number" min="0" placeholder="Prix" value={zonePrice} onChange={(e) => setZonePrice(e.target.value)} />
                     <select className="rounded-md border border-input bg-surface px-2 py-2 text-sm" value={zoneCurrency} onChange={(e) => setZoneCurrency(e.target.value as "CDF" | "USD")}>
