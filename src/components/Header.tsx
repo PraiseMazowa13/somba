@@ -112,8 +112,8 @@ export function Header() {
             </>
           ) : (
             <>
-              <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex"><Link to="/login">Connexion</Link></Button>
-              <Button size="sm" asChild className="hidden sm:inline-flex"><Link to="/signup">S'inscrire</Link></Button>
+              <Button size="sm" asChild><Link to="/login">Connexion</Link></Button>
+              <Button variant="outline" size="sm" asChild className="hidden lg:inline-flex"><Link to="/signup">S'inscrire</Link></Button>
             </>
           )}
         </div>

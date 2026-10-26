@@ -21,24 +21,24 @@ function SellerLayout() {
   );
 
   const tabs = [
-    { to: "/seller", label: "Boutique", icon: Store, exact: true },
+    { to: "/seller", label: "Tableau de bord", icon: Store, exact: true },
     { to: "/seller/products", label: "Produits", icon: Package },
     { to: "/seller/orders", label: "Commandes", icon: ClipboardList },
   ];
 
   return (
-    <div className="container-zandu py-8 grid lg:grid-cols-[220px,1fr] gap-8">
-      <aside className="lg:sticky lg:top-20 lg:self-start space-y-1">
+    <div className="container-zandu py-8 grid lg:grid-cols-[200px_minmax(0,1fr)] gap-6">
+      <aside className="flex gap-1 overflow-x-auto lg:block lg:sticky lg:top-20 lg:self-start lg:space-y-1">
         {tabs.map((t) => {
           const active = t.exact ? loc.pathname === t.to : loc.pathname.startsWith(t.to);
           return (
-            <Link key={t.to} to={t.to} className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${active ? "bg-secondary font-semibold" : "text-muted-foreground hover:bg-secondary/60"}`}>
+            <Link key={t.to} to={t.to} className={`flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm ${active ? "bg-secondary font-semibold" : "text-muted-foreground hover:bg-secondary/60"}`}>
               <t.icon className="h-4 w-4" />{t.label}
             </Link>
           );
         })}
       </aside>
-      <div><Outlet /></div>
+      <div className="min-w-0"><Outlet /></div>
     </div>
   );
 }

@@ -12,9 +12,11 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { slugify, formatPrice } from "@/lib/money";
-import { Package, ShoppingBag, DollarSign, Eye, Share2, Settings, Store, TrendingUp, AlertTriangle, Plus, ClipboardList } from "lucide-react";
+import { sellerStats } from "@/lib/seller-stats";
+import { Package, ShoppingBag, DollarSign, Eye, Share2, Settings, Store, TrendingUp, AlertTriangle, Plus, ClipboardList, RefreshCw, ArrowUpRight } from "lucide-react";
 
 export const Route = createFileRoute("/seller/")({
+  head: () => ({ meta: [{ title: "Tableau de bord vendeur — Zandu" }, { name: "description", content: "Suivez vos ventes, commandes et produits dans votre espace vendeur Zandu." }, { property: "og:title", content: "Tableau de bord vendeur — Zandu" }, { property: "og:description", content: "Suivez vos ventes, commandes et produits dans votre espace vendeur Zandu." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: SellerShop,
 });
 
@@ -26,11 +28,13 @@ const schema = z.object({
 function SellerShop() {
   const { user, refreshRoles } = useAuth();
   const qc = useQueryClient();
-  const { data: shop, isLoading } = useQuery({
+  const { data: shop, isLoading, error: shopError, refetch } = useQuery({
     queryKey: ["my-shop", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase.from("shops").select("*").eq("owner_id", user!.id).maybeSingle();
+      if (!user) return null;
+      const { data, error } = await supabase.from("shops").select("*").eq("owner_id", user.id).maybeSingle();
+      if (error) throw error;
       return data;
     },
   });
@@ -45,14 +49,15 @@ function SellerShop() {
   const zones: DeliveryZone[] = Array.isArray(shop?.delivery_zones) ? (shop?.delivery_zones as unknown as DeliveryZone[]) : [];
 
   useEffect(() => {
-    if (shop) setForm({ name: shop.name, description: shop.description ?? "", logo_url: shop.logo_url ?? "", banner_url: shop.banner_url ?? "", whatsapp_number: (shop as any).whatsapp_number ?? "" });
+    if (shop) setForm({ name: shop.name, description: shop.description ?? "", logo_url: shop.logo_url ?? "", banner_url: shop.banner_url ?? "", whatsapp_number: shop.whatsapp_number ?? "" });
   }, [shop]);
 
   async function saveZones(next: DeliveryZone[]) {
-    if (!shop) return;
+    if (!shop) return false;
     const { error } = await supabase.from("shops").update({ delivery_zones: next as any }).eq("id", shop.id);
-    if (error) { toast.error(error.message); return; }
-    qc.invalidateQueries({ queryKey: ["my-shop"] });
+    if (error) { toast.error(error.message); return false; }
+    await qc.invalidateQueries({ queryKey: ["my-shop"] });
+    return true;
   }
 
   async function addZone() {
@@ -60,19 +65,20 @@ function SellerShop() {
     const price = Number(zonePrice);
     if (!city || !Number.isFinite(price) || price < 0) { toast.error("Ville et prix valides requis"); return; }
     const next = [...zones, { city, price_cents: Math.round(price * 100), currency: zoneCurrency }];
-    await saveZones(next);
+    if (!(await saveZones(next))) return;
     setZoneCity(""); setZonePrice("");
     toast.success("Zone de livraison ajoutée");
   }
 
   async function removeZone(idx: number) {
     const next = zones.filter((_, i) => i !== idx);
-    await saveZones(next);
+    if (!(await saveZones(next))) return;
     toast.success("Zone supprimée");
   }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    if (!user) return;
     const parsed = schema.safeParse(form);
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setSaving(true);
@@ -82,10 +88,10 @@ function SellerShop() {
       toast.success("Boutique mise à jour");
     } else {
       const slug = `${slugify(parsed.data.name)}-${Math.random().toString(36).slice(2, 6)}`;
-      const { error } = await supabase.from("shops").insert({ owner_id: user!.id, name: parsed.data.name, slug, description: parsed.data.description, logo_url: form.logo_url || null, whatsapp_number: form.whatsapp_number || null } as any);
+      const { error } = await supabase.from("shops").insert({ owner_id: user.id, name: parsed.data.name, slug, description: parsed.data.description, logo_url: form.logo_url || null, banner_url: form.banner_url || null, whatsapp_number: form.whatsapp_number || null });
       if (error) { setSaving(false); toast.error(error.message); return; }
       // grant seller role
-      await supabase.from("user_roles").insert({ user_id: user!.id, role: "seller" });
+      await supabase.from("user_roles").insert({ user_id: user.id, role: "seller" });
       await refreshRoles();
       toast.success("Boutique créée ! En attente d'approbation.");
     }
@@ -94,7 +100,8 @@ function SellerShop() {
   }
 
   async function uploadImage(field: "logo_url" | "banner_url", file: File) {
-    const path = `${user!.id}/${field}-${Date.now()}-${file.name}`;
+    if (!user) return;
+    const path = `${user.id}/${field}-${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("shop-assets").upload(path, file, { upsert: true });
     if (error) { toast.error(error.message); return; }
     const { data } = supabase.storage.from("shop-assets").getPublicUrl(path);
@@ -127,7 +134,8 @@ function SellerShop() {
     qc.invalidateQueries({ queryKey: ["my-shop"] });
   }
 
-  if (isLoading) return <div>Chargement…</div>;
+  if (isLoading) return <div role="status" className="py-12 text-muted-foreground">Chargement de votre boutique…</div>;
+  if (shopError) return <div role="alert" className="space-y-3 py-8"><p>Impossible de charger votre boutique.</p><Button variant="outline" onClick={() => refetch()}><RefreshCw className="mr-2 h-4 w-4" />Réessayer</Button></div>;
 
   const statusLabel = shop?.status === "approved" ? "Approuvée" : shop?.status === "pending" ? "En attente" : "Suspendue";
   const statusTone = shop?.status === "approved" ? "bg-primary/10 text-primary" : shop?.status === "pending" ? "bg-secondary text-foreground" : "bg-destructive/10 text-destructive";
@@ -172,16 +180,17 @@ function SellerShop() {
   return (
     <div className="space-y-6">
       {/* En-tête pro */}
-      <div className="card-zandu overflow-hidden">
-        <div className="h-24 sm:h-32 bg-gradient-to-r from-primary to-primary/60 relative">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
+        <div className="h-24 sm:h-32 bg-secondary relative">
           {shop.banner_url && <img src={shop.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover" />}
         </div>
-        <div className="p-4 flex flex-wrap items-end gap-4 -mt-10 relative">
+        <div className="p-4 flex flex-wrap items-end gap-4 relative">
           <div className="h-16 w-16 rounded-xl border-4 border-background bg-secondary overflow-hidden flex items-center justify-center">
             {shop.logo_url ? <img src={shop.logo_url} alt="" className="h-full w-full object-cover" /> : <Store className="h-6 w-6 text-muted-foreground" />}
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold truncate">{shop.name}</h1>
+            <p className="text-xs text-muted-foreground mb-1">Tableau de bord vendeur</p>
+            <h1 className="text-xl font-bold break-words">{shop.name}</h1>
             <span className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${statusTone}`}>{statusLabel}</span>
           </div>
           <Sheet>
@@ -209,7 +218,7 @@ function SellerShop() {
                       ))}
                     </ul>
                   )}
-                  <div className="grid grid-cols-[1fr,100px,80px] gap-2">
+                  <div className="grid grid-cols-[minmax(0,1fr)_90px_70px] gap-2">
                     <Input placeholder="Ville" value={zoneCity} onChange={(e) => setZoneCity(e.target.value)} maxLength={60} />
                     <Input type="number" min="0" placeholder="Prix" value={zonePrice} onChange={(e) => setZonePrice(e.target.value)} />
                     <select className="rounded-md border border-input bg-surface px-2 py-2 text-sm" value={zoneCurrency} onChange={(e) => setZoneCurrency(e.target.value as "CDF" | "USD")}>
@@ -246,25 +255,16 @@ function SellerShop() {
 }
 
 function SellerDashboard({ shopId, slug }: { shopId: string; slug: string }) {
-  const { data: stats } = useQuery({
+  const { data: stats, isPending, error, refetch, isFetching } = useQuery({
     queryKey: ["seller-stats", shopId],
     queryFn: async () => {
-      const [{ data: products }, { data: orderItems }] = await Promise.all([
+      const [products, orderItems] = await Promise.all([
         supabase.from("products").select("*").eq("shop_id", shopId),
-        supabase.from("order_items").select("*").eq("shop_id", shopId),
+        supabase.from("order_items").select("*,orders(status,currency,shipping_full_name,shipping_city,created_at)").eq("shop_id", shopId),
       ]);
-      const items = (orderItems ?? []) as any[];
-      const prods = (products ?? []) as any[];
-      const orderIds = new Set(items.map((o) => o.order_id));
-      const revenue = items.reduce((s, oi) => s + oi.unit_price_cents * oi.quantity, 0);
-      const sold: Record<string, number> = {};
-      items.forEach((oi) => { sold[oi.product_id] = (sold[oi.product_id] ?? 0) + oi.quantity; });
-      const top = [...prods].sort((a, b) => (sold[b.id] ?? 0) - (sold[a.id] ?? 0)).slice(0, 5).map((p) => ({ ...p, sold: sold[p.id] ?? 0 }));
-      const active = prods.filter((p) => p.is_active !== false).length;
-      const outOfStock = prods.filter((p) => typeof p.stock === "number" && p.stock <= 0).length;
-      const recent = [...items].sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? ""))).slice(0, 5)
-        .map((oi) => ({ ...oi, name: prods.find((p) => p.id === oi.product_id)?.name ?? "Produit" }));
-      return { productCount: prods.length, active, outOfStock, orderCount: orderIds.size, revenue, avg: orderIds.size ? Math.round(revenue / orderIds.size) : 0, top, recent };
+      if (products.error) throw products.error;
+      if (orderItems.error) throw orderItems.error;
+      return sellerStats(products.data ?? [], orderItems.data ?? []);
     },
   });
 
@@ -273,18 +273,22 @@ function SellerDashboard({ shopId, slug }: { shopId: string; slug: string }) {
     try {
       if (navigator.share) await navigator.share({ title: "Ma boutique", url });
       else { await navigator.clipboard.writeText(url); toast.success("Lien copié"); }
-    } catch { /* cancelled */ }
+    } catch (error) { if (!(error instanceof DOMException && error.name === "AbortError")) toast.error("Impossible de partager le lien"); }
   }
 
+  const revenue = stats?.totals.length ? stats.totals.map((total) => formatPrice(total.cents, total.currency)).join(" · ") : formatPrice(0, "CDF");
+  const average = stats?.totals.length ? stats.totals.map((total) => formatPrice(total.average, total.currency)).join(" · ") : formatPrice(0, "CDF");
   const cards = [
-    { icon: DollarSign, label: "Chiffre d'affaires", value: stats ? formatPrice(stats.revenue) : "…" },
+    { icon: DollarSign, label: "Ventes confirmées", value: stats ? revenue : "…" },
     { icon: ShoppingBag, label: "Commandes", value: stats?.orderCount ?? "…" },
-    { icon: TrendingUp, label: "Panier moyen", value: stats ? formatPrice(stats.avg) : "…" },
+    { icon: TrendingUp, label: "Panier moyen", value: stats ? average : "…" },
     { icon: Package, label: "Produits actifs", value: stats ? `${stats.active}/${stats.productCount}` : "…" },
   ];
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Vue d’ensemble</h2><Button variant="ghost" size="sm" disabled={isFetching} onClick={() => refetch()}><RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "motion-safe:animate-spin" : ""}`} />Actualiser</Button></div>
+      {error && <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Impossible de charger les statistiques. Réessayez avec « Actualiser ».</div>}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {cards.map((c) => (
           <div key={c.label} className="card-zandu p-4">
@@ -292,7 +296,7 @@ function SellerDashboard({ shopId, slug }: { shopId: string; slug: string }) {
               <span className="text-xs text-muted-foreground">{c.label}</span>
               <span className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center"><c.icon className="h-4 w-4 text-primary" /></span>
             </div>
-            <div className="text-xl font-bold leading-tight truncate">{c.value}</div>
+            <div className="text-lg font-bold leading-snug break-words">{error ? "—" : c.value}</div>
           </div>
         ))}
       </div>
@@ -300,7 +304,9 @@ function SellerDashboard({ shopId, slug }: { shopId: string; slug: string }) {
       {stats && stats.outOfStock > 0 && (
         <div className="card-zandu p-3 flex items-center gap-2 text-sm"><AlertTriangle className="h-4 w-4 text-destructive" /> {stats.outOfStock} produit(s) en rupture de stock</div>
       )}
+      {!!stats?.pending && <Link to="/seller/orders" className="flex items-center justify-between rounded-lg border border-border bg-promo/20 p-3 text-sm"><span>{stats.pending} commande(s) en attente de paiement</span><ArrowUpRight className="h-4 w-4 shrink-0" /></Link>}
 
+      <h2 className="font-semibold">Raccourcis</h2>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Button asChild variant="outline" className="h-auto py-3 flex-col gap-1"><Link to="/seller/products"><Plus className="h-5 w-5" /><span className="text-xs">Ajouter produit</span></Link></Button>
         <Button asChild variant="outline" className="h-auto py-3 flex-col gap-1"><Link to="/seller/orders"><ClipboardList className="h-5 w-5" /><span className="text-xs">Commandes</span></Link></Button>
@@ -309,35 +315,35 @@ function SellerDashboard({ shopId, slug }: { shopId: string; slug: string }) {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
-        <div className="card-zandu p-4">
-          <h2 className="font-semibold mb-3">Ventes récentes</h2>
+        <section className="min-w-0 border-t border-border pt-4">
+          <div className="flex items-center justify-between mb-3 gap-2"><h2 className="font-semibold">Ventes récentes</h2><Button asChild variant="ghost" size="sm"><Link to="/seller/orders">Voir tout<ArrowUpRight className="ml-1 h-4 w-4" /></Link></Button></div>
           {stats?.recent.length ? (
             <ul className="divide-y divide-border">
-              {stats.recent.map((r: any, i: number) => (
-                <li key={i} className="py-2 flex items-center justify-between text-sm">
-                  <span className="truncate">{r.name} <span className="text-muted-foreground">×{r.quantity}</span></span>
-                  <span className="font-medium">{formatPrice(r.unit_price_cents * r.quantity)}</span>
+              {stats.recent.map((r) => (
+                <li key={r.id} className="py-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <div className="min-w-0"><p className="font-medium break-words">{r.title} <span className="text-muted-foreground">×{r.quantity}</span></p><p className="text-xs text-muted-foreground mt-1">{r.orders?.shipping_full_name} · {r.orders?.shipping_city} · {new Date(r.created_at).toLocaleDateString("fr-FR")}</p></div>
+                  <span className="font-medium">{formatPrice(r.unit_price_cents * r.quantity, r.orders?.currency ?? "CDF")}</span>
                 </li>
               ))}
             </ul>
-          ) : <p className="text-sm text-muted-foreground">Aucune vente pour l'instant.</p>}
-        </div>
-        <div className="card-zandu p-4">
+          ) : <p role="status" className="py-6 text-sm text-muted-foreground">{error ? "Ventes indisponibles." : isPending ? "Chargement des ventes…" : "Aucune vente confirmée pour l’instant."}</p>}
+        </section>
+        <section className="min-w-0 border-t border-border pt-4">
           <h2 className="font-semibold mb-3">Meilleurs produits</h2>
           {stats?.top.length ? (
             <ul className="space-y-2">
-              {stats.top.map((p: any) => (
+              {stats.top.map((p) => (
                 <li key={p.id} className="flex items-center gap-3 text-sm">
                   <div className="h-10 w-10 rounded-md bg-secondary overflow-hidden flex-shrink-0">
-                    {(p.images?.[0] ?? p.image_url) && <img src={p.images?.[0] ?? p.image_url} alt="" className="h-full w-full object-cover" />}
+                    {p.images[0] ? <img src={p.images[0]} alt="" className="h-full w-full object-cover" /> : <Package className="h-5 w-5 m-auto text-muted-foreground" />}
                   </div>
-                  <span className="flex-1 truncate">{p.name}</span>
+                  <span className="flex-1 min-w-0 break-words">{p.title}</span>
                   <span className="text-muted-foreground">{p.sold} vendu(s)</span>
                 </li>
               ))}
             </ul>
-          ) : <p className="text-sm text-muted-foreground">Aucun produit.</p>}
-        </div>
+          ) : <div className="py-6 text-sm text-muted-foreground">{error ? "Produits indisponibles." : isPending ? "Chargement des produits…" : "Vos meilleures ventes apparaîtront ici."}{stats?.productCount === 0 && <Button asChild variant="outline" size="sm" className="mt-4 flex w-fit"><Link to="/seller/products"><Plus className="mr-2 h-4 w-4" />Ajouter un produit</Link></Button>}</div>}
+        </section>
       </div>
     </div>
   );

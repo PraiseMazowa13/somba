@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/signup")({
-  head: () => ({ meta: [{ title: "Inscription — Zandu" }, { name: "description", content: "Créez votre compte Zandu en quelques secondes." }] }),
+  head: () => ({ meta: [{ title: "Inscription — Zandu" }, { name: "description", content: "Créez votre compte Zandu en quelques secondes." }, { property: "og:title", content: "Inscription — Zandu" }, { property: "og:description", content: "Créez votre compte Zandu en quelques secondes." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: SignupPage,
 });
 
