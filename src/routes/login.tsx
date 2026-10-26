@@ -36,9 +36,9 @@ function LoginPage() {
     navigate({ to: "/" });
   }
 
-  async function google() {
-    const res = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
-    if (res.error) { toast.error("Échec de connexion Google"); return; }
+  async function oauth(provider: "google" | "lovable") {
+    const res = await lovable.auth.signInWithOAuth(provider, { redirect_uri: window.location.origin });
+    if (res.error) { toast.error(`Échec de connexion ${provider === "google" ? "Google" : "Lovable"}`); return; }
     if (res.redirected) return;
     navigate({ to: "/" });
   }
@@ -57,7 +57,8 @@ function LoginPage() {
       <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
         <div className="flex-1 h-px bg-border" /> OU <div className="flex-1 h-px bg-border" />
       </div>
-      <Button variant="outline" className="w-full" onClick={google}>Continuer avec Google</Button>
+      <Button variant="outline" className="w-full" onClick={() => oauth("google")}>Continuer avec Google</Button>
+      <Button variant="outline" className="mt-2 w-full" onClick={() => oauth("lovable")}>Continuer avec Lovable</Button>
 
       <div className="mt-6 text-sm text-muted-foreground flex justify-between">
         <Link to="/reset-password" className="hover:text-foreground">Mot de passe oublié ?</Link>
