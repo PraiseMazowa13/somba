@@ -36,9 +36,9 @@ function LoginPage() {
     navigate({ to: "/" });
   }
 
-  async function google() {
-    const res = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
-    if (res.error) { toast.error("Échec de connexion Google"); return; }
+  async function oauth(provider: "google" | "lovable") {
+    const res = await lovable.auth.signInWithOAuth(provider, { redirect_uri: window.location.origin });
+    if (res.error) { toast.error(`Échec de connexion ${provider === "google" ? "Google" : "Lovable"}`); return; }
     if (res.redirected) return;
     navigate({ to: "/" });
   }

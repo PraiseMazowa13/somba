@@ -43,9 +43,9 @@ function SignupPage() {
     navigate({ to: "/" });
   }
 
-  async function google() {
-    const res = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
-    if (res.error) toast.error("Échec Google");
+  async function oauth(provider: "google" | "lovable") {
+    const res = await lovable.auth.signInWithOAuth(provider, { redirect_uri: window.location.origin });
+    if (res.error) toast.error(`Échec ${provider === "google" ? "Google" : "Lovable"}`);
   }
 
   return (
