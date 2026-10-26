@@ -61,7 +61,8 @@ function SignupPage() {
       <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
         <div className="flex-1 h-px bg-border" /> OU <div className="flex-1 h-px bg-border" />
       </div>
-      <Button variant="outline" className="w-full" onClick={google}>S'inscrire avec Google</Button>
+      <Button variant="outline" className="w-full" onClick={() => oauth("google")}>S'inscrire avec Google</Button>
+      <Button variant="outline" className="mt-2 w-full" onClick={() => oauth("lovable")}>Continuer avec Lovable</Button>
       <p className="mt-6 text-sm text-muted-foreground text-center">
         Déjà un compte ? <Link to="/login" className="text-brand hover:underline">Se connecter</Link>
       </p>
