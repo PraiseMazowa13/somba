@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Connexion — Zandu" }, { name: "description", content: "Connectez-vous à votre compte Zandu." }] }),
+  head: () => ({ meta: [{ title: "Connexion — Zandu" }, { name: "description", content: "Connectez-vous à votre compte Zandu." }, { property: "og:title", content: "Connexion — Zandu" }, { property: "og:description", content: "Connectez-vous à votre compte Zandu." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: LoginPage,
 });
 
@@ -49,8 +49,8 @@ function LoginPage() {
       <p className="text-muted-foreground mb-8">Heureux de vous revoir sur Zandu.</p>
 
       <form onSubmit={onSubmit} className="space-y-4">
-        <div><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
-        <div><Label>Mot de passe</Label><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
+        <div><Label htmlFor="login-email">Email</Label><Input id="login-email" autoComplete="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
+        <div><Label htmlFor="login-password">Mot de passe</Label><Input id="login-password" autoComplete="current-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
         <Button type="submit" className="w-full" disabled={loading}>{loading ? "Connexion…" : "Se connecter"}</Button>
       </form>
 
