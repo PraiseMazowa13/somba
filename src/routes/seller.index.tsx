@@ -163,6 +163,14 @@ function SellerShop() {
           <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadImage("banner_url", e.target.files[0])} />
         </div>
       </div>
+      <div>
+        <Label>Couleur du thème</Label>
+        <div className="flex items-center gap-3">
+          <input type="color" value={form.theme_color} onChange={(e) => setForm({ ...form, theme_color: e.target.value })} className="h-10 w-14 cursor-pointer rounded-md border border-border bg-surface p-1" aria-label="Choisir la couleur du thème" />
+          <Input value={form.theme_color} onChange={(e) => setForm({ ...form, theme_color: e.target.value })} placeholder="#1d4ed8" maxLength={7} className="w-28" />
+          <span className="text-xs text-muted-foreground">Couleur de fond et d'accent de votre boutique.</span>
+        </div>
+      </div>
       <Button disabled={saving} className="w-full">{saving ? "Enregistrement…" : shop ? "Enregistrer" : "Créer la boutique"}</Button>
     </form>
   );
