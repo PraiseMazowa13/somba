@@ -66,6 +66,7 @@ function ShopPage() {
   if (!shop) return <div className="container-zandu py-16">Boutique introuvable.</div>;
 
   const whatsapp = (shop as any).whatsapp_number as string | null;
+  const theme = (shop as any).theme_color as string | null;
   const productsWithShop = filtered.map((p) => ({ ...p, shops: { name: shop.name, slug: shop.slug, logo_url: shop.logo_url } }));
 
   const tabs: { id: Tab; label: string; icon: any }[] = [
@@ -75,13 +76,13 @@ function ShopPage() {
   ];
 
   return (
-    <div>
+    <div style={theme ? { background: `color-mix(in oklab, ${theme} 7%, transparent)` } : undefined} className="min-h-screen pb-10">
       {/* Bannière */}
       <div className="relative h-40 md:h-56 bg-secondary overflow-hidden">
         {shop.banner_url ? (
           <img src={shop.banner_url} alt={`${shop.name} bannière`} className="h-full w-full object-cover" />
         ) : (
-          <div className="h-full w-full gradient-hero" />
+          <div className="h-full w-full gradient-hero" style={theme ? { background: `linear-gradient(135deg, ${theme}, color-mix(in oklab, ${theme} 60%, white))` } : undefined} />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
       </div>
@@ -103,7 +104,7 @@ function ShopPage() {
                 </a>
               </Button>
             )}
-            <Button onClick={shareShop} size="sm">
+            <Button onClick={shareShop} size="sm" style={theme ? { backgroundColor: theme, borderColor: theme } : undefined}>
               <Share2 className="h-4 w-4 mr-1" /> Partager
             </Button>
           </div>
@@ -117,6 +118,7 @@ function ShopPage() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
+                style={active && theme ? { borderColor: theme, color: theme } : undefined}
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${active ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
               >
                 <t.icon className="h-4 w-4" />
@@ -133,7 +135,7 @@ function ShopPage() {
             <section>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-lg font-semibold">Nouveautés</h2>
-                <button onClick={() => setTab("catalog")} className="text-sm text-primary hover:underline">Voir le catalogue →</button>
+                <button onClick={() => setTab("catalog")} style={theme ? { color: theme } : undefined} className="text-sm text-primary hover:underline">Voir le catalogue →</button>
               </div>
               {products && products.length > 0 ? (
                 <div className="grid grid-cols-3 gap-2 sm:gap-3">

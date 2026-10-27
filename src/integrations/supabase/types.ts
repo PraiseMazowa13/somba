@@ -349,6 +349,7 @@ export type Database = {
           owner_id: string
           slug: string
           status: Database["public"]["Enums"]["shop_status"]
+          theme_color: string | null
           updated_at: string
           whatsapp_number: string | null
         }
@@ -365,6 +366,7 @@ export type Database = {
           owner_id: string
           slug: string
           status?: Database["public"]["Enums"]["shop_status"]
+          theme_color?: string | null
           updated_at?: string
           whatsapp_number?: string | null
         }
@@ -381,6 +383,7 @@ export type Database = {
           owner_id?: string
           slug?: string
           status?: Database["public"]["Enums"]["shop_status"]
+          theme_color?: string | null
           updated_at?: string
           whatsapp_number?: string | null
         }
