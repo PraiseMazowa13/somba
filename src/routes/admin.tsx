@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { slugify } from "@/lib/money";
-import { Search, Store, Package, ShoppingBag, DollarSign, Users } from "lucide-react";
-import { formatPrice } from "@/lib/money";
+  import { Search, Store, Package, ShoppingBag, DollarSign, Users, Check, Ban, RotateCcw, Eye, Settings } from "lucide-react";
+  import { formatPrice } from "@/lib/money";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — Zandu" }] }),
@@ -91,6 +91,15 @@ function AdminPage() {
   async function delCat(id: string) {
     await supabase.from("categories").delete().eq("id", id);
     qc.invalidateQueries({ queryKey: ["admin-cats"] });
+  }
+  async function updateShopStatus(shopId: string, status: "approved" | "pending" | "suspended") {
+    const { error } = await supabase.from("shops").update({ status }).eq("id", shopId);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(status === "approved" ? "Boutique approuvée" : status === "suspended" ? "Boutique suspendue" : "Statut mis à jour");
+      qc.invalidateQueries({ queryKey: ["admin-shops"] });
+      qc.invalidateQueries({ queryKey: ["admin-shop", shopId] });
+    }
   }
 
   const statusCounts = useMemo(() => {
