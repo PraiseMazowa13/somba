@@ -66,6 +66,7 @@ function ShopPage() {
   if (!shop) return <div className="container-zandu py-16">Boutique introuvable.</div>;
 
   const whatsapp = (shop as any).whatsapp_number as string | null;
+  const theme = (shop as any).theme_color as string | null;
   const productsWithShop = filtered.map((p) => ({ ...p, shops: { name: shop.name, slug: shop.slug, logo_url: shop.logo_url } }));
 
   const tabs: { id: Tab; label: string; icon: any }[] = [
