@@ -8,6 +8,13 @@
       "when": 1793094180304,
       "tag": "0000_grant_data_api_access",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793124931891,
+      "tag": "0001_add_shop_theme_color",
+      "breakpoints": true
     }
   ]
 }
