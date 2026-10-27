@@ -39,7 +39,7 @@ function SellerShop() {
     },
   });
 
-  const [form, setForm] = useState({ name: "", description: "", logo_url: "", banner_url: "", whatsapp_number: "" });
+  const [form, setForm] = useState({ name: "", description: "", logo_url: "", banner_url: "", whatsapp_number: "", theme_color: "#1d4ed8" });
   const [saving, setSaving] = useState(false);
   const [zoneCity, setZoneCity] = useState("");
   const [zonePrice, setZonePrice] = useState("");
@@ -49,7 +49,7 @@ function SellerShop() {
   const zones: DeliveryZone[] = Array.isArray(shop?.delivery_zones) ? (shop?.delivery_zones as unknown as DeliveryZone[]) : [];
 
   useEffect(() => {
-    if (shop) setForm({ name: shop.name, description: shop.description ?? "", logo_url: shop.logo_url ?? "", banner_url: shop.banner_url ?? "", whatsapp_number: shop.whatsapp_number ?? "" });
+    if (shop) setForm({ name: shop.name, description: shop.description ?? "", logo_url: shop.logo_url ?? "", banner_url: shop.banner_url ?? "", whatsapp_number: shop.whatsapp_number ?? "", theme_color: shop.theme_color ?? "#1d4ed8" });
   }, [shop]);
 
   async function saveZones(next: DeliveryZone[]) {
