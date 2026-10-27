@@ -217,32 +217,56 @@ function AdminPage() {
           ) : (
             <div className="space-y-3">
               {filtered.slice(0, 50).map((s: any) => (
-                <Link
+                <div
                   key={s.id}
-                  to="/admin/shops/$id"
-                  params={{ id: s.id }}
-                  className="card-zandu p-4 flex items-center gap-4 hover:shadow-[var(--shadow-elevated)] transition-shadow"
+                  className="card-zandu p-4 flex flex-col gap-3 sm:flex-row sm:items-center hover:shadow-[var(--shadow-elevated)] transition-shadow"
                 >
-                  <div className="h-12 w-12 rounded-md bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {s.logo_url ? <img src={s.logo_url} className="h-full w-full object-cover" /> : <Store className="h-5 w-5 text-muted-foreground" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium flex items-center gap-2">
-                      {s.name}
-                      {s.deletion_requested_at && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">Suppression demandée</span>
-                      )}
+                  <Link to="/admin/shops/$id" params={{ id: s.id }} className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="h-12 w-12 rounded-md bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {s.logo_url ? <img src={s.logo_url} className="h-full w-full object-cover" /> : <Store className="h-5 w-5 text-muted-foreground" />}
                     </div>
-                    <div className="text-xs text-muted-foreground">/{s.slug}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium flex items-center gap-2">
+                        {s.name}
+                        {s.deletion_requested_at && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">Suppression demandée</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">/{s.slug}</div>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      s.status === "approved" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" :
+                      s.status === "pending" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" :
+                      "bg-red-500/10 text-red-700 dark:text-red-400"
+                    }`}>
+                      {s.status}
+                    </span>
+                  </Link>
+                  {/* Boutons d'action visibles */}
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    {s.status === "pending" && (
+                      <Button size="sm" onClick={() => updateShopStatus(s.id, "approved")} className="gap-1.5">
+                        <Check className="h-4 w-4" /> Approuver
+                      </Button>
+                    )}
+                    {s.status === "approved" && (
+                      <Button size="sm" variant="destructive" onClick={() => updateShopStatus(s.id, "suspended")} className="gap-1.5">
+                        <Ban className="h-4 w-4" /> Suspendre
+                      </Button>
+                    )}
+                    {s.status === "suspended" && (
+                      <Button size="sm" variant="outline" onClick={() => updateShopStatus(s.id, "approved")} className="gap-1.5">
+                        <RotateCcw className="h-4 w-4" /> Réactiver
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" asChild className="gap-1.5">
+                      <Link to="/shops/$slug" params={{ slug: s.slug }}><Eye className="h-4 w-4" /> Voir</Link>
+                    </Button>
+                    <Button size="sm" asChild className="gap-1.5">
+                      <Link to="/admin/shops/$id" params={{ id: s.id }}><Settings className="h-4 w-4" /> Gérer</Link>
+                    </Button>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    s.status === "approved" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" :
-                    s.status === "pending" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" :
-                    "bg-red-500/10 text-red-700 dark:text-red-400"
-                  }`}>
-                    {s.status}
-                  </span>
-                </Link>
+                </div>
               ))}
               {filtered.length === 0 && (
                 <div className="card-zandu p-12 text-center text-muted-foreground">Aucune boutique ne correspond.</div>
