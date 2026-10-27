@@ -118,6 +118,7 @@ function ShopPage() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
+                style={active && theme ? { borderColor: theme, color: theme } : undefined}
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${active ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
               >
                 <t.icon className="h-4 w-4" />
@@ -134,7 +135,7 @@ function ShopPage() {
             <section>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-lg font-semibold">Nouveautés</h2>
-                <button onClick={() => setTab("catalog")} className="text-sm text-primary hover:underline">Voir le catalogue →</button>
+                <button onClick={() => setTab("catalog")} style={theme ? { color: theme } : undefined} className="text-sm text-primary hover:underline">Voir le catalogue →</button>
               </div>
               {products && products.length > 0 ? (
                 <div className="grid grid-cols-3 gap-2 sm:gap-3">
