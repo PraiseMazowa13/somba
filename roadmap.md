@@ -1,3 +1,4 @@
 - [ ] Finish seller statistics, shortcuts, recent sales, and error states.
 - [ ] Make connection buttons visible and verify navigation.
 - [ ] Verify dashboard with the signed-in account and run statistics tests.
+- [ ] Keep public pages, dashboards, and dialogs within the viewport; reposition crowded actions and verify small-screen layouts.
