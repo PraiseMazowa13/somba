@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, Search } from "lucide-react";
@@ -11,6 +11,7 @@ export const Route = createFileRoute("/shops")({
 });
 
 function ShopsPage() {
+  const isShopDetail = useRouterState({ select: (state) => state.location.pathname.startsWith("/shops/") });
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"name" | "recent">("name");
 
@@ -34,6 +35,8 @@ function ShopsPage() {
     else list = [...list].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
     return list;
   }, [shops, q, sort]);
+
+  if (isShopDetail) return <Outlet />;
 
   return (
     <div className="container-zandu py-10">
