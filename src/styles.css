@@ -127,26 +127,34 @@
 
 @layer base {
   * { border-color: var(--color-border); }
-  html, body { font-family: var(--font-sans); }
+  html, body { font-family: var(--font-sans); max-width: 100%; }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;
   }
-  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.01em; }
+  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: 0; }
+  :where(h1, h2, h3, h4, p, dd, li) { overflow-wrap: anywhere; }
+  :where(input, select, textarea) { min-width: 0; max-width: 100%; }
+  :where(img, video) { max-width: 100%; }
 }
 
 @layer components {
-  .container-zandu { max-width: 1200px; margin-inline: auto; padding-inline: 1rem; }
+  .container-zandu { width: 100%; min-width: 0; max-width: 1200px; margin-inline: auto; padding-inline: 1rem; }
   .gradient-hero {
     background: linear-gradient(135deg, oklch(0.5 0.22 264) 0%, oklch(0.6 0.19 255) 100%);
   }
   .card-zandu {
+    min-width: 0;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-soft);
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
 

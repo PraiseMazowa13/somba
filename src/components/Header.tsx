@@ -43,6 +43,13 @@ export function Header() {
             </SheetHeader>
             <nav className="mt-6 flex flex-col gap-1">
               {navLinks}
+              {user && (
+                <div className="mt-4 flex flex-col gap-1 border-t border-border pt-4">
+                  <Button variant="ghost" asChild onClick={() => setOpen(false)}><Link to="/seller"><Store className="h-4 w-4" />Espace vendeur</Link></Button>
+                  {roles.includes("admin") && <Button variant="ghost" asChild onClick={() => setOpen(false)}><Link to="/admin"><ShieldCheck className="h-4 w-4" />Administration</Link></Button>}
+                  <Button variant="ghost" onClick={() => { setOpen(false); signOut(); }}><LogOut className="h-4 w-4" />Déconnexion</Button>
+                </div>
+              )}
               <form
                 onSubmit={(e) => { e.preventDefault(); setOpen(false); navigate({ to: "/products", search: { q, category: undefined } as any }); }}
                 className="mt-4 flex items-center gap-2 rounded-lg border border-input bg-surface px-3 py-1.5"
@@ -52,7 +59,7 @@ export function Header() {
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   placeholder="Rechercher…"
-                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                   className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                   maxLength={120}
                 />
               </form>
@@ -66,12 +73,12 @@ export function Header() {
           </SheetContent>
         </Sheet>
 
-        <Link to="/" className="flex items-center gap-2 font-bold text-lg font-[var(--font-display)]">
+        <Link to="/" className="flex min-w-0 items-center gap-2 font-bold text-lg font-[var(--font-display)]">
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">Z</span>
-          <span>Zandu</span>
+          <span className="truncate">Zandu</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-5 text-sm font-medium text-muted-foreground">
+        <nav className="hidden md:flex shrink-0 items-center gap-3 lg:gap-5 text-sm font-medium text-muted-foreground">
           <Link to="/products" className="hover:text-foreground transition-colors" activeProps={{ className: "text-foreground" }}>Produits</Link>
           <Link to="/categories" className="hover:text-foreground transition-colors" activeProps={{ className: "text-foreground" }}>Catégories</Link>
           <Link to="/shops" className="hover:text-foreground transition-colors" activeProps={{ className: "text-foreground" }}>Boutiques</Link>
@@ -79,36 +86,36 @@ export function Header() {
 
         <form
           onSubmit={(e) => { e.preventDefault(); navigate({ to: "/products", search: { q, category: undefined } as any }); }}
-          className="ml-auto hidden md:flex flex-1 max-w-md items-center gap-2 rounded-lg border border-input bg-surface px-3 py-1.5"
+          className="ml-auto hidden lg:flex min-w-0 flex-1 max-w-md items-center gap-2 rounded-lg border border-input bg-surface px-3 py-1.5"
         >
           <Search className="h-4 w-4 text-muted-foreground" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Rechercher un produit, une boutique…"
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             maxLength={120}
           />
         </form>
 
-        <div className="ml-auto md:ml-0 flex items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/cart"><ShoppingBag className="h-4 w-4" /></Link>
+            <Link to="/cart" aria-label="Panier"><ShoppingBag className="h-4 w-4" /></Link>
           </Button>
           {user ? (
             <>
-              <Button variant="ghost" size="sm" asChild>
+              <Button variant="ghost" size="sm" asChild className="hidden md:inline-flex">
                 <Link to="/seller"><Store className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Vendeur</span></Link>
               </Button>
               {roles.includes("admin") && (
-                <Button variant="ghost" size="sm" asChild>
+                <Button variant="ghost" size="sm" asChild className="hidden md:inline-flex">
                   <Link to="/admin"><ShieldCheck className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Admin</span></Link>
                 </Button>
               )}
               <Button variant="ghost" size="sm" asChild>
-                <Link to="/account"><User className="h-4 w-4" /></Link>
+                <Link to="/account" aria-label="Mon compte"><User className="h-4 w-4" /></Link>
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => signOut()}><LogOut className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="sm" className="hidden md:inline-flex" aria-label="Déconnexion" onClick={() => signOut()}><LogOut className="h-4 w-4" /></Button>
             </>
           ) : (
             <>

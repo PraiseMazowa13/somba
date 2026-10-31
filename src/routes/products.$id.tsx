@@ -82,7 +82,7 @@ function ProductPage() {
     <div className="container-zandu py-10 animate-fade-in">
       <div className="grid md:grid-cols-2 gap-10">
         {/* Gallery */}
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <div
             key={currentImg || "empty"}
             className="card-zandu aspect-square bg-secondary flex items-center justify-center overflow-hidden animate-scale-in"
@@ -111,7 +111,7 @@ function ProductPage() {
         </div>
 
         {/* Info */}
-        <div className="animate-fade-in" style={{ animationDelay: "80ms", animationFillMode: "backwards" }}>
+        <div className="min-w-0 animate-fade-in" style={{ animationDelay: "80ms", animationFillMode: "backwards" }}>
           {p.shops && (
             <Link to="/shops/$slug" params={{ slug: p.shops.slug }} className="inline-flex items-center gap-1.5 text-sm text-brand hover:underline">
               <Store className="h-3.5 w-3.5" />
@@ -130,7 +130,7 @@ function ProductPage() {
           </p>
 
           {/* Quantity + CTA */}
-          <div className="mt-6 flex flex-wrap items-center gap-3">
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
             <div className="inline-flex items-center rounded-full border border-input bg-surface overflow-hidden">
               <button
                 type="button"
@@ -154,7 +154,7 @@ function ProductPage() {
               size="lg"
               onClick={addToCart}
               disabled={adding || p.stock <= 0}
-              className="flex-1 min-w-[200px] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-lg"
+              className="w-full min-w-0 transition-colors duration-300 shadow-md"
             >
               {p.stock <= 0 ? "Indisponible" : adding ? "Ajout…" : "Ajouter au panier"}
             </Button>

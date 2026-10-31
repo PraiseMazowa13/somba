@@ -164,14 +164,14 @@ function ProductsPage() {
   );
 
   return (
-    <div className="container-zandu py-10 grid lg:grid-cols-[280px,1fr] gap-8">
+    <div className="container-zandu py-6 md:py-10 grid lg:grid-cols-[280px_minmax(0,1fr)] gap-8">
       {/* Desktop filters */}
       <aside className="hidden lg:block sticky top-20 self-start">{Filters}</aside>
 
-      <div>
-        <div className="flex items-center justify-between gap-3 mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">
+      <div className="min-w-0">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-6 sm:flex sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl md:text-3xl font-bold break-words">
               {cat ? cat.name : sp.q ? `« ${sp.q} »` : "Tous les produits"}
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
@@ -179,7 +179,7 @@ function ProductsPage() {
               {activeCount > 0 && ` · ${activeCount} filtre(s) actif(s)`}
             </p>
           </div>
-          <Button variant="outline" className="lg:hidden" onClick={() => setOpenMobile(true)}>
+          <Button variant="outline" className="lg:hidden shrink-0" onClick={() => setOpenMobile(true)}>
             <SlidersHorizontal className="h-4 w-4 mr-2" />Filtres
           </Button>
         </div>

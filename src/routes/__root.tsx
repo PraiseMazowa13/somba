@@ -85,8 +85,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Zandu — Marketplace de confiance" },
       { name: "twitter:description", content: "Achetez et vendez en toute sécurité sur Zandu, la marketplace multi-vendeurs." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/bda42d2a-53d0-4a5a-8828-078e17627b61" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/bda42d2a-53d0-4a5a-8828-078e17627b61" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -126,7 +124,7 @@ function RootComponent() {
       <AuthProvider>
         <div className="flex min-h-screen flex-col">
           <Header />
-          <main className="flex-1 pb-20 md:pb-0">
+          <main className="min-w-0 flex-1">
             <Outlet />
           </main>
           <Footer />
