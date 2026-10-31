@@ -153,11 +153,11 @@ function CartPage() {
           <Button asChild><Link to="/products">Voir les produits</Link></Button>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-[1fr,380px] gap-8">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-8">
           <div className="space-y-3">
             {items.map((it: any) => (
-              <div key={it.id} className="card-zandu p-4 flex gap-4">
-                <div className="h-20 w-20 bg-secondary rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
+              <div key={it.id} className="card-zandu p-3 sm:p-4 grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+                <div className="h-14 w-14 sm:h-20 sm:w-20 bg-secondary rounded-md flex items-center justify-center overflow-hidden shrink-0">
                   {it.products?.images?.[0] ? <img src={it.products.images[0]} className="h-full w-full object-cover" /> : <Package className="h-6 w-6 text-muted-foreground" />}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -170,7 +170,7 @@ function CartPage() {
                     <Button variant="ghost" size="sm" onClick={() => setQty(it.id, 0)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>
-                <div className="font-semibold text-right">{formatPrice((it.products?.price_cents ?? 0) * it.quantity, it.products?.currency)}</div>
+                <div className="col-start-2 font-semibold">{formatPrice((it.products?.price_cents ?? 0) * it.quantity, it.products?.currency)}</div>
               </div>
             ))}
           </div>
@@ -191,7 +191,7 @@ function CartPage() {
                 <Input value={customerCity} onChange={(e) => setCustomerCity(e.target.value)} placeholder="Kinshasa, Lubumbashi…" maxLength={60} />
               </div>
               <Button
-                className="w-full bg-[#25D366] hover:bg-[#1ebe5b] text-white"
+                className="w-full h-auto min-h-10 whitespace-normal px-3 py-3 bg-success hover:bg-success/90 text-success-foreground"
                 size="lg"
                 onClick={sendWhatsApp}
                 disabled={sending}

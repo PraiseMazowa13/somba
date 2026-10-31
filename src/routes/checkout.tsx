@@ -88,7 +88,7 @@ function CheckoutPage() {
   }
 
   return (
-    <div className="container-zandu py-10 grid lg:grid-cols-[1fr,360px] gap-8">
+    <div className="container-zandu py-10 grid lg:grid-cols-[minmax(0,1fr)_360px] gap-8">
       <form onSubmit={placeOrder} className="card-zandu p-6 space-y-4">
         <h1 className="text-2xl font-bold">Adresse de livraison</h1>
         <div className="grid md:grid-cols-2 gap-4">

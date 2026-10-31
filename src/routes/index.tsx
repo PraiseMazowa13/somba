@@ -60,10 +60,10 @@ function Index() {
   return (
     <div className="container-zandu py-4 md:py-8 space-y-6">
       {/* Search */}
-      <form onSubmit={go} className="flex items-center gap-2">
-        <div className="flex-1 flex items-center gap-2 rounded-2xl bg-card border border-border px-4 h-12 shadow-[var(--shadow-soft)]">
+      <form onSubmit={go} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+        <div className="min-w-0 flex items-center gap-2 rounded-2xl bg-card border border-border px-4 h-12 shadow-[var(--shadow-soft)]">
           <Search className="h-4 w-4 text-muted-foreground" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={120} placeholder="Que recherchez-vous ?" className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={120} placeholder="Que recherchez-vous ?" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
         </div>
         <Link to="/products" aria-label="Filtres" className="h-12 w-12 rounded-2xl bg-card border border-border grid place-items-center text-primary shadow-[var(--shadow-soft)]">
           <SlidersHorizontal className="h-5 w-5" />
