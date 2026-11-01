@@ -1,3 +1,5 @@
+import { pageMeta } from "@/lib/page-meta";
+import { filterProducts, type ProductFilter, type ProductSort } from "@/lib/catalog-controls";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,9 +13,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { formatPrice } from "@/lib/money";
-import { Package, Trash2, Edit, Copy, Eye, EyeOff } from "lucide-react";
+import { Package, Trash2, Edit, Copy, Eye, EyeOff, Star, Search, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/seller/products")({
+  head: () => pageMeta("Mes produits — Zandu", "Gérez, triez et mettez en vedette les produits de votre boutique Zandu."),
   component: SellerProducts,
 });
 
@@ -43,7 +46,7 @@ function SellerProducts() {
   const { data: shop } = useQuery({
     queryKey: ["my-shop", user?.id],
     enabled: !!user,
-    queryFn: async () => (await supabase.from("shops").select("id,name,status").eq("owner_id", user!.id).maybeSingle()).data,
+    queryFn: async () => { if (!user) return null; const { data, error } = await supabase.from("shops").select("id,name,status").eq("owner_id", user.id).maybeSingle(); if (error) throw error; return data; },
   });
 
   const { data: cats } = useQuery({
@@ -51,10 +54,10 @@ function SellerProducts() {
     queryFn: async () => (await supabase.from("categories").select("id,name").order("name")).data ?? [],
   });
 
-  const { data: products } = useQuery({
+  const { data: products, isLoading, error: productsError, refetch } = useQuery({
     queryKey: ["seller-products", shop?.id],
     enabled: !!shop?.id,
-    queryFn: async () => (await supabase.from("products").select("*").eq("shop_id", shop!.id).order("created_at", { ascending: false })).data ?? [],
+    queryFn: async () => { if (!shop) return []; const { data, error } = await supabase.from("products").select("*").eq("shop_id", shop.id).order("created_at", { ascending: false }); if (error) throw error; return data ?? []; },
   });
 
   const emptyForm = { title: "", description: "", price: "", stock: "1", category_id: "", image: "" };
@@ -62,10 +65,19 @@ function SellerProducts() {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<EditForm | null>(null);
 
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<ProductFilter>("all");
+  const [sort, setSort] = useState<ProductSort>("recent");
+  const [category, setCategory] = useState("");
+  const [currency, setCurrency] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const visibleProducts = filterProducts(products ?? [], q, filter, category, currency, sort);
+
   if (!shop) return <div className="card-zandu p-6">Créez d'abord votre boutique dans l'onglet « Boutique ».</div>;
 
   async function uploadImg(file: File, setter: (url: string) => void) {
-    const path = `${user!.id}/${Date.now()}-${file.name}`;
+    if (!user) return;
+    const path = `${user.id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("product-images").upload(path, file);
     if (error) { toast.error(error.message); return; }
     const { data } = supabase.storage.from("product-images").getPublicUrl(path);
@@ -74,6 +86,7 @@ function SellerProducts() {
 
   async function addProduct(e: React.FormEvent) {
     e.preventDefault();
+    if (!shop) return;
     const priceNum = Math.round(parseFloat(form.price.replace(",", ".")) * 100);
     const stockNum = parseInt(form.stock, 10);
     const parsed = schema.safeParse({
@@ -86,7 +99,7 @@ function SellerProducts() {
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setSaving(true);
     const { error } = await supabase.from("products").insert({
-      shop_id: shop!.id,
+      shop_id: shop.id,
       category_id: parsed.data.category_id ?? null,
       title: parsed.data.title,
       description: parsed.data.description ?? null,
@@ -104,33 +117,53 @@ function SellerProducts() {
 
   async function remove(id: string) {
     if (!window.confirm("Supprimer ce produit ?")) return;
-    await supabase.from("products").delete().eq("id", id);
+    setBusy(id);
+    const { error } = await supabase.from("products").delete().eq("id", id).select("id").single();
+    setBusy(null);
+    if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["seller-products"] });
     toast.success("Produit supprimé");
   }
 
   async function toggleActive(p: any) {
+    setBusy(p.id);
     const next = !p.is_active;
-    const { error } = await supabase.from("products").update({ is_active: next } as any).eq("id", p.id);
+    const { error } = await supabase.from("products").update({ is_active: next }).eq("id", p.id).select("id").single();
+    setBusy(null);
     if (error) { toast.error(error.message); return; }
     toast.success(next ? "Produit visible" : "Produit masqué");
     qc.invalidateQueries({ queryKey: ["seller-products"] });
   }
 
   async function duplicate(p: any) {
+    if (!shop) return;
+    setBusy(p.id);
     const { error } = await supabase.from("products").insert({
-      shop_id: shop!.id,
+      shop_id: shop.id,
       category_id: p.category_id,
       title: `${p.title} (copie)`,
       description: p.description,
+      currency: p.currency,
       price_cents: p.price_cents,
       stock: p.stock,
       images: p.images ?? [],
       status: "active",
     });
+    setBusy(null);
     if (error) { toast.error(error.message); return; }
     toast.success("Produit dupliqué");
     qc.invalidateQueries({ queryKey: ["seller-products"] });
+  }
+
+  async function toggleFeatured(p: { id: string; is_featured: boolean }) {
+    setBusy(p.id);
+    const { error } = await supabase.from("products").update({ is_featured: !p.is_featured }).eq("id", p.id).select("id").single();
+    setBusy(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success(p.is_featured ? "Produit retiré de la vedette" : "Produit mis en vedette");
+    await qc.invalidateQueries({ queryKey: ["seller-products"] });
+    await qc.invalidateQueries({ queryKey: ["featured-products"] });
+    await qc.invalidateQueries({ queryKey: ["shop-products"] });
   }
 
   function openEdit(p: any) {
@@ -205,10 +238,21 @@ function SellerProducts() {
         <Button disabled={saving}>{saving ? "Ajout…" : "Ajouter le produit"}</Button>
       </form>
 
+      <section className="mb-6 space-y-3">
+        <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input aria-label="Rechercher mes produits" placeholder="Rechercher mes produits…" className="pl-9" value={q} onChange={e => setQ(e.target.value)} /></div>
+        <div className="flex flex-wrap gap-2">{([ ["all", "Tous"], ["visible", "Visibles"], ["hidden", "Masqués"], ["stock", "Rupture"], ["featured", "En vedette"] ] as const).map(([value, label]) => <Button key={value} size="sm" variant={filter === value ? "default" : "outline"} onClick={() => setFilter(value)}>{label}</Button>)}</div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <select aria-label="Catégorie des produits" className="rounded-md border border-input bg-surface p-2 text-sm" value={category} onChange={e => setCategory(e.target.value)}><option value="">Toutes les catégories</option>{cats?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          <select aria-label="Devise des produits" className="rounded-md border border-input bg-surface p-2 text-sm" value={currency} onChange={e => setCurrency(e.target.value)}><option value="">Toutes les devises</option>{[...new Set(products?.map(p => p.currency))].map(c => <option key={c} value={c}>{c}</option>)}</select>
+          <select aria-label="Trier les produits" className="rounded-md border border-input bg-surface p-2 text-sm" value={sort} onChange={e => setSort(e.target.value as ProductSort)}><option value="recent">Plus récents</option><option value="name">Nom A–Z</option><option value="price-up">Prix croissant par devise</option><option value="price-down">Prix décroissant par devise</option><option value="stock">Stock croissant</option><option value="featured">En vedette d’abord</option></select>
+        </div>
+        <p className="text-sm text-muted-foreground">{visibleProducts.length} produit(s)</p>
+        {productsError && <div role="alert"><p>Impossible de charger les produits.</p><Button variant="outline" onClick={() => refetch()}><RefreshCw className="h-4 w-4" />Réessayer</Button></div>}
+      </section>
       {/* Grille produits */}
-      {products?.length ? (
+      {visibleProducts.length ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products.map((p: any) => {
+          {visibleProducts.map((p) => {
             const inStock = (p.stock ?? 0) > 0;
             return (
               <div key={p.id} className={`card-zandu overflow-hidden flex flex-col ${!p.is_active ? "opacity-60" : ""}`}>
@@ -223,19 +267,20 @@ function SellerProducts() {
                   <div className="font-medium line-clamp-2">{p.title}</div>
                   <div className="text-sm font-semibold text-primary mt-1">{formatPrice(p.price_cents, p.currency)}</div>
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    <Button size="sm" variant="outline" onClick={() => openEdit(p)}><Edit className="h-3.5 w-3.5 mr-1" />Modifier</Button>
-                    <Button size="sm" variant="outline" onClick={() => duplicate(p)}><Copy className="h-3.5 w-3.5 mr-1" />Dupliquer</Button>
-                    <Button size="sm" variant="outline" onClick={() => toggleActive(p)}>
+                    <Button size="sm" variant="outline" disabled={busy === p.id} onClick={() => openEdit(p)}><Edit className="h-3.5 w-3.5 mr-1" />Modifier</Button>
+                    <Button size="sm" variant="outline" disabled={busy === p.id} onClick={() => duplicate(p)}><Copy className="h-3.5 w-3.5 mr-1" />Dupliquer</Button>
+                    <Button size="sm" variant="outline" disabled={busy === p.id} onClick={() => toggleActive(p)}>
                       {p.is_active ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Masquer</> : <><Eye className="h-3.5 w-3.5 mr-1" />Afficher</>}
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => remove(p.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                    <Button size="sm" variant={p.is_featured ? "secondary" : "outline"} disabled={busy === p.id} onClick={() => toggleFeatured(p)}><Star className="h-3.5 w-3.5" />{p.is_featured ? "Retirer de la vedette" : "Mettre en vedette"}</Button>
+                    <Button title="Supprimer le produit" aria-label="Supprimer le produit" size="sm" variant="ghost" disabled={busy === p.id} onClick={() => remove(p.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
-      ) : <div className="card-zandu p-12 text-center text-muted-foreground">Aucun produit. Ajoutez votre premier produit ci-dessus.</div>}
+      ) : <div className="card-zandu p-12 text-center text-muted-foreground">{isLoading ? "Chargement…" : productsError ? "Produits indisponibles." : products?.length ? "Aucun produit ne correspond aux filtres." : "Aucun produit."}</div>}
 
       {/* Dialog édition */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>

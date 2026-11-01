@@ -30,6 +30,8 @@ function Index() {
         .from("products")
         .select("id,title,price_cents,currency,images,shops(name,slug,logo_url)")
         .eq("status", "active")
+        .eq("is_active", true)
+        .order("is_featured", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(12);
       return (data ?? []) as unknown as ProductCardData[];
@@ -47,7 +49,7 @@ function Index() {
   const { data: shops } = useQuery({
     queryKey: ["home-shops"],
     queryFn: async () => {
-      const { data } = await supabase.from("shops").select("id,name,slug,logo_url").eq("status", "approved").limit(10);
+      const { data } = await supabase.from("shops").select("id,name,slug,logo_url").eq("status", "approved").order("is_featured", { ascending: false }).limit(10);
       return data ?? [];
     },
   });

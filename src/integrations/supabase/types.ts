@@ -254,6 +254,7 @@ export type Database = {
           id: string
           images: string[]
           is_active: boolean
+          is_featured: boolean
           price_cents: number
           shop_id: string
           status: Database["public"]["Enums"]["product_status"]
@@ -269,6 +270,7 @@ export type Database = {
           id?: string
           images?: string[]
           is_active?: boolean
+          is_featured?: boolean
           price_cents: number
           shop_id: string
           status?: Database["public"]["Enums"]["product_status"]
@@ -284,6 +286,7 @@ export type Database = {
           id?: string
           images?: string[]
           is_active?: boolean
+          is_featured?: boolean
           price_cents?: number
           shop_id?: string
           status?: Database["public"]["Enums"]["product_status"]
@@ -344,6 +347,7 @@ export type Database = {
           delivery_zones: Json
           description: string | null
           id: string
+          is_featured: boolean
           logo_url: string | null
           name: string
           owner_id: string
@@ -361,6 +365,7 @@ export type Database = {
           delivery_zones?: Json
           description?: string | null
           id?: string
+          is_featured?: boolean
           logo_url?: string | null
           name: string
           owner_id: string
@@ -378,6 +383,7 @@ export type Database = {
           delivery_zones?: Json
           description?: string | null
           id?: string
+          is_featured?: boolean
           logo_url?: string | null
           name?: string
           owner_id?: string

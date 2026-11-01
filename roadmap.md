@@ -2,3 +2,6 @@
 - [ ] Make connection buttons visible and verify navigation.
 - [ ] Verify dashboard with the signed-in account and run statistics tests.
 - [ ] Keep public pages, dashboards, and dialogs within the viewport; reposition crowded actions and verify small-screen layouts.
+- [ ] Repair admin actions and shop-detail navigation; add persistent featured shops and products.
+- [ ] Add seller product filters and sorting, and reliable shared shop links.
+- [ ] Verify admin, seller product actions and sharing with a signed-in account.
