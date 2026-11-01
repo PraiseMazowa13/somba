@@ -1,3 +1,4 @@
+import { ShopShareButton } from "@/components/ShopShareButton";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -276,14 +277,6 @@ function SellerDashboard({ shopId, slug }: { shopId: string; slug: string }) {
     },
   });
 
-  async function share() {
-    const url = `${window.location.origin}/shops/${slug}`;
-    try {
-      if (navigator.share) await navigator.share({ title: "Ma boutique", url });
-      else { await navigator.clipboard.writeText(url); toast.success("Lien copié"); }
-    } catch (error) { if (!(error instanceof DOMException && error.name === "AbortError")) toast.error("Impossible de partager le lien"); }
-  }
-
   const revenue = stats?.totals.length ? stats.totals.map((total) => formatPrice(total.cents, total.currency)).join(" · ") : formatPrice(0, "CDF");
   const average = stats?.totals.length ? stats.totals.map((total) => formatPrice(total.average, total.currency)).join(" · ") : formatPrice(0, "CDF");
   const cards = [
@@ -314,12 +307,12 @@ function SellerDashboard({ shopId, slug }: { shopId: string; slug: string }) {
       )}
       {!!stats?.pending && <Link to="/seller/orders" className="flex items-center justify-between rounded-lg border border-border bg-promo/20 p-3 text-sm"><span>{stats.pending} commande(s) en attente de paiement</span><ArrowUpRight className="h-4 w-4 shrink-0" /></Link>}
 
-      <h2 className="font-semibold">Raccourcis</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Raccourcis</h2><Button asChild size="sm" variant="outline"><Link to="/seller/products">Trier mes produits<Package className="h-4 w-4" /></Link></Button></div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Button asChild variant="outline" className="h-auto py-3 flex-col gap-1"><Link to="/seller/products"><Plus className="h-5 w-5" /><span className="text-xs">Ajouter produit</span></Link></Button>
         <Button asChild variant="outline" className="h-auto py-3 flex-col gap-1"><Link to="/seller/orders"><ClipboardList className="h-5 w-5" /><span className="text-xs">Commandes</span></Link></Button>
         <Button asChild variant="outline" className="h-auto py-3 flex-col gap-1"><a href={`/shops/${slug}`} target="_blank" rel="noopener"><Eye className="h-5 w-5" /><span className="text-xs">Voir boutique</span></a></Button>
-        <Button variant="outline" className="h-auto py-3 flex-col gap-1" onClick={share}><Share2 className="h-5 w-5" /><span className="text-xs">Partager</span></Button>
+        <ShopShareButton slug={slug} name="Ma boutique" className="h-auto py-3 flex-col gap-1" />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">

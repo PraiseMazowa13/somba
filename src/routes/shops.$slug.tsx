@@ -1,3 +1,5 @@
+import { ShopShareButton } from "@/components/ShopShareButton";
+import { pageMeta } from "@/lib/page-meta";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/shops/$slug")({
-  head: () => ({ meta: [{ title: "Boutique — Zandu" }] }),
+  head: () => pageMeta("Boutique — Zandu", "Découvrez le catalogue et les coordonnées de cette boutique Zandu."),
   component: ShopPage,
 });
 
@@ -20,10 +22,11 @@ function ShopPage() {
   const [tab, setTab] = useState<Tab>("home");
   const [q, setQ] = useState("");
 
-  const { data: shop } = useQuery({
+  const { data: shop, isLoading, error } = useQuery({
     queryKey: ["shop", slug],
     queryFn: async () => {
-      const { data } = await supabase.from("shops").select("*").eq("slug", slug).eq("status", "approved").maybeSingle();
+      const { data, error } = await supabase.from("shops").select("*").eq("slug", slug).maybeSingle();
+      if (error) throw error;
       return data;
     },
   });
@@ -31,12 +34,16 @@ function ShopPage() {
     queryKey: ["shop-products", shop?.id],
     enabled: !!shop?.id,
     queryFn: async () => {
+      if (isLoading) return <div role="status" className="container-zandu py-16">Chargement de la boutique…</div>;
+  if (error) return <div role="alert" className="container-zandu py-16">Impossible de charger la boutique.</div>;
+  if (!shop) return [];
       const { data } = await supabase
         .from("products")
         .select("id,title,price_cents,currency,images")
-        .eq("shop_id", shop!.id)
+        .eq("shop_id", shop.id)
         .eq("status", "active")
         .eq("is_active", true)
+        .order("is_featured", { ascending: false })
         .order("created_at", { ascending: false });
       return (data ?? []) as unknown as ProductCardData[];
     },
@@ -49,8 +56,9 @@ function ShopPage() {
     return products.filter((p) => p.title.toLowerCase().includes(t));
   }, [products, q]);
 
-  async function shareShop() {
-    if (!shop) return;
+  if (isLoading) return <div role="status" className="container-zandu py-16">Chargement de la boutique…</div>;
+  if (error) return <div role="alert" className="container-zandu py-16">Impossible de charger la boutique.</div>;
+  if (!shop) return;
     const url = `${window.location.origin}/shops/${shop.slug}`;
     const shareData = { title: shop.name, text: `Découvrez ${shop.name} sur Zandu`, url };
     try {
@@ -63,6 +71,8 @@ function ShopPage() {
     } catch { /* user cancelled */ }
   }
 
+  if (isLoading) return <div role="status" className="container-zandu py-16">Chargement de la boutique…</div>;
+  if (error) return <div role="alert" className="container-zandu py-16">Impossible de charger la boutique.</div>;
   if (!shop) return <div className="container-zandu py-16">Boutique introuvable.</div>;
 
   const whatsapp = (shop as any).whatsapp_number as string | null;
@@ -104,12 +114,11 @@ function ShopPage() {
                 </a>
               </Button>
             )}
-            <Button onClick={shareShop} size="sm" style={theme ? { backgroundColor: theme, borderColor: theme } : undefined}>
-              <Share2 className="h-4 w-4 mr-1" /> Partager
-            </Button>
+            <ShopShareButton slug={shop.slug} name={shop.name} />
           </div>
         </div>
 
+        {shop.status !== "approved" && <p className="mt-4 rounded-md border border-border bg-secondary p-3 text-sm">Aperçu privé · boutique {shop.status === "pending" ? "en attente" : "suspendue"}</p>}
         {/* Tabs */}
         <div className="mt-4 flex gap-1 border-b border-border overflow-x-auto">
           {tabs.map((t) => {
