@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { pageMeta } from "@/lib/page-meta";
+import { ShopShareButton } from "@/components/ShopShareButton";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -7,11 +9,11 @@ import { Input } from "@/components/ui/input";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { slugify } from "@/lib/money";
-  import { Search, Store, Package, ShoppingBag, DollarSign, Users, Check, Ban, RotateCcw, Eye, Settings } from "lucide-react";
+  import { Search, Store, Package, ShoppingBag, DollarSign, Users, Check, Ban, RotateCcw, Eye, Settings, Star, RefreshCw } from "lucide-react";
   import { formatPrice } from "@/lib/money";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Admin — Zandu" }] }),
+  head: () => pageMeta("Administration — Zandu", "Gérez les boutiques, catégories et activités de la marketplace Zandu."),
   component: AdminPage,
 });
 
@@ -20,6 +22,9 @@ type Section = "overview" | "categories" | "shops";
 function AdminPage() {
   const { user, roles, loading } = useAuth();
   const qc = useQueryClient();
+  const detail = useRouterState({ select: state => state.location.pathname.startsWith("/admin/") });
+  const [busy, setBusy] = useState<string | null>(null);
+  const [sort, setSort] = useState("recent");
   const [catName, setCatName] = useState("");
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending" | "suspended">("pending");
@@ -31,10 +36,10 @@ function AdminPage() {
     enabled: roles.includes("admin"),
     queryFn: async () => (await supabase.from("categories").select("*").order("name")).data ?? [],
   });
-  const { data: shops } = useQuery({
+  const { data: shops, error: shopsError, refetch: reloadShops } = useQuery({
     queryKey: ["admin-shops"],
     enabled: roles.includes("admin"),
-    queryFn: async () => (await supabase.from("shops").select("*").order("created_at", { ascending: false })).data ?? [],
+    queryFn: async () => { const { data, error } = await supabase.from("shops").select("*").order("created_at", { ascending: false }); if (error) throw error; return data ?? []; },
   });
 
   const { data: overview } = useQuery({
@@ -70,9 +75,17 @@ function AdminPage() {
         s.slug?.toLowerCase().includes(needle) ||
         s.description?.toLowerCase().includes(needle)
       );
-    });
-  }, [shops, q, statusFilter]);
+    }).sort((a, b) => sort === "name" ? a.name.localeCompare(b.name) : sort === "featured" ? Number(b.is_featured) - Number(a.is_featured) || b.created_at.localeCompare(a.created_at) : b.created_at.localeCompare(a.created_at));
+  }, [shops, q, statusFilter, sort]);
 
+  const statusCounts = useMemo(() => {
+    const c = { all: shops?.length ?? 0, approved: 0, pending: 0, suspended: 0 } as Record<string, number>;
+    (shops ?? []).forEach((s: any) => { if (c[s.status] != null) c[s.status]++; });
+    return c;
+  }, [shops]);
+
+
+  if (detail) return <Outlet />;
   if (loading) return <div className="container-zandu py-16">Chargement…</div>;
   if (!user) return <div className="container-zandu py-16 text-center"><Button asChild><Link to="/login">Connexion</Link></Button></div>;
   if (!roles.includes("admin")) return (
@@ -89,11 +102,16 @@ function AdminPage() {
     if (error) toast.error(error.message); else { toast.success("Catégorie créée"); setCatName(""); qc.invalidateQueries({ queryKey: ["admin-cats"] }); }
   }
   async function delCat(id: string) {
-    await supabase.from("categories").delete().eq("id", id);
+    if (!window.confirm("Supprimer cette catégorie ?")) return;
+    const { error } = await supabase.from("categories").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Catégorie supprimée");
     qc.invalidateQueries({ queryKey: ["admin-cats"] });
   }
   async function updateShopStatus(shopId: string, status: "approved" | "pending" | "suspended") {
-    const { error } = await supabase.from("shops").update({ status }).eq("id", shopId);
+    setBusy(shopId);
+    const { error } = await supabase.from("shops").update({ status }).eq("id", shopId).select("id").single();
+    setBusy(null);
     if (error) toast.error(error.message);
     else {
       toast.success(status === "approved" ? "Boutique approuvée" : status === "suspended" ? "Boutique suspendue" : "Statut mis à jour");
@@ -102,11 +120,17 @@ function AdminPage() {
     }
   }
 
-  const statusCounts = useMemo(() => {
-    const c = { all: shops?.length ?? 0, approved: 0, pending: 0, suspended: 0 } as Record<string, number>;
-    (shops ?? []).forEach((s: any) => { if (c[s.status] != null) c[s.status]++; });
-    return c;
-  }, [shops]);
+
+  async function toggleFeatured(shopId: string, featured: boolean) {
+    setBusy(shopId);
+    const { error } = await supabase.from("shops").update({ is_featured: !featured }).eq("id", shopId).select("id").single();
+    setBusy(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success(featured ? "Boutique retirée de la vedette" : "Boutique mise en vedette");
+    await qc.invalidateQueries({ queryKey: ["admin-shops"] });
+    await qc.invalidateQueries({ queryKey: ["home-shops"] });
+    await qc.invalidateQueries({ queryKey: ["shops-approved"] });
+  }
 
   const tabs: { id: Section; label: string; icon: any }[] = [
     { id: "overview", label: "Vue d'ensemble", icon: DollarSign },
@@ -119,6 +143,7 @@ function AdminPage() {
   return (
     <div className="container-zandu py-10 space-y-6">
       <h1 className="text-3xl font-bold">Administration</h1>
+      {shopsError && <div role="alert" className="flex flex-wrap items-center gap-3 text-destructive"><span>Impossible de charger les boutiques.</span><Button variant="outline" onClick={() => reloadShops()}><RefreshCw className="h-4 w-4" />Réessayer</Button></div>}
 
       {/* Navigation par sections */}
       <div className="flex flex-wrap gap-2">
@@ -158,8 +183,8 @@ function AdminPage() {
 
       {section === "categories" && (
         <section>
-          <form onSubmit={addCat} className="card-zandu p-4 flex gap-3 mb-4 max-w-xl">
-            <Input placeholder="Nouvelle catégorie" value={catName} onChange={(e) => setCatName(e.target.value)} maxLength={60} />
+          <form onSubmit={addCat} className="flex flex-wrap gap-3 mb-4 max-w-xl">
+            <Input className="flex-1 min-w-0" placeholder="Nouvelle catégorie" value={catName} onChange={(e) => setCatName(e.target.value)} maxLength={60} />
             <Button>Ajouter</Button>
           </form>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -208,6 +233,9 @@ function AdminPage() {
             ))}
           </div>
 
+          <select aria-label="Trier les boutiques" className="mb-4 w-full sm:w-60 rounded-md border border-input bg-surface p-2 text-sm" value={sort} onChange={e => setSort(e.target.value)}>
+            <option value="recent">Plus récentes</option><option value="name">Nom A–Z</option><option value="featured">En vedette d’abord</option>
+          </select>
           {/* Recherche */}
           <div className="card-zandu p-3 mb-4 relative">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -235,7 +263,7 @@ function AdminPage() {
                       {s.logo_url ? <img src={s.logo_url} className="h-full w-full object-cover" /> : <Store className="h-5 w-5 text-muted-foreground" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium flex items-center gap-2">
+                      <div className="font-medium flex flex-wrap items-center gap-2">
                         {s.name}
                         {s.deletion_requested_at && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">Suppression demandée</span>
@@ -254,20 +282,22 @@ function AdminPage() {
                   {/* Boutons d'action visibles */}
                   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                     {s.status === "pending" && (
-                      <Button size="sm" onClick={() => updateShopStatus(s.id, "approved")} className="gap-1.5">
+                      <Button disabled={busy === s.id} size="sm" onClick={() => updateShopStatus(s.id, "approved")} className="gap-1.5">
                         <Check className="h-4 w-4" /> Approuver
                       </Button>
                     )}
                     {s.status === "approved" && (
-                      <Button size="sm" variant="destructive" onClick={() => updateShopStatus(s.id, "suspended")} className="gap-1.5">
+                      <Button disabled={busy === s.id} size="sm" variant="destructive" onClick={() => updateShopStatus(s.id, "suspended")} className="gap-1.5">
                         <Ban className="h-4 w-4" /> Suspendre
                       </Button>
                     )}
                     {s.status === "suspended" && (
-                      <Button size="sm" variant="outline" onClick={() => updateShopStatus(s.id, "approved")} className="gap-1.5">
+                      <Button disabled={busy === s.id} size="sm" variant="outline" onClick={() => updateShopStatus(s.id, "approved")} className="gap-1.5">
                         <RotateCcw className="h-4 w-4" /> Réactiver
                       </Button>
                     )}
+                    <Button size="sm" variant={s.is_featured ? "secondary" : "outline"} disabled={busy === s.id} onClick={() => toggleFeatured(s.id, s.is_featured)} className="gap-1.5"><Star className="h-4 w-4" />{s.is_featured ? "Retirer de la vedette" : "Mettre en vedette"}</Button>
+                    <ShopShareButton slug={s.slug} name={s.name} />
                     <Button size="sm" variant="outline" asChild className="gap-1.5">
                       <Link to="/shops/$slug" params={{ slug: s.slug }}><Eye className="h-4 w-4" /> Voir</Link>
                     </Button>
