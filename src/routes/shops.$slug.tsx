@@ -58,21 +58,6 @@ function ShopPage() {
 
   if (isLoading) return <div role="status" className="container-zandu py-16">Chargement de la boutique…</div>;
   if (error) return <div role="alert" className="container-zandu py-16">Impossible de charger la boutique.</div>;
-  if (!shop) return;
-    const url = `${window.location.origin}/shops/${shop.slug}`;
-    const shareData = { title: shop.name, text: `Découvrez ${shop.name} sur Zandu`, url };
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(url);
-        toast.success("Lien copié dans le presse-papiers");
-      }
-    } catch { /* user cancelled */ }
-  }
-
-  if (isLoading) return <div role="status" className="container-zandu py-16">Chargement de la boutique…</div>;
-  if (error) return <div role="alert" className="container-zandu py-16">Impossible de charger la boutique.</div>;
   if (!shop) return <div className="container-zandu py-16">Boutique introuvable.</div>;
 
   const whatsapp = (shop as any).whatsapp_number as string | null;
