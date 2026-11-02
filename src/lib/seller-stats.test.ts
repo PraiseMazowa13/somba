@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { sellerStats, type SellerOrderItem } from "./seller-stats";
 import type { Tables } from "@/integrations/supabase/types";
 
-const product: Tables<"products"> = { id: "p1", title: "Sac", category_id: null, shop_id: "shop", created_at: "2026-10-26", updated_at: "2026-10-26", currency: "CDF", description: null, images: [], is_active: true, is_featured: false, status: "active", stock: 0, price_cents: 10000 };
+const product: Tables<"products"> = { id: "p1", title: "Sac", category_id: null, shop_id: "shop", created_at: "2026-10-26", updated_at: "2026-10-26", currency: "CDF", description: null, images: [], is_active: true, is_featured: false, compare_at_price_cents: null, status: "active", stock: 0, price_cents: 10000 };
 function item(id: string, currency: string, status: NonNullable<SellerOrderItem["orders"]>["status"], cents = 10000): SellerOrderItem {
   return { id, order_id: id, product_id: "p1", shop_id: "shop", title: "Sac acheté", quantity: 2, unit_price_cents: cents, created_at: `2026-10-${id.padStart(2, "0")}`, orders: { status, currency, shipping_full_name: "Client", shipping_city: "Kinshasa", created_at: "2026-10-26" } };
 }
