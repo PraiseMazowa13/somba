@@ -119,7 +119,7 @@ function ShopPage() {
             {waLink ? (
               <Button asChild size="sm" className="rounded-full"><a href={waLink} target="_blank" rel="noopener"><MessageCircle className="h-4 w-4" />Contacter</a></Button>
             ) : <Button size="sm" className="rounded-full" disabled><MessageCircle className="h-4 w-4" />Contacter</Button>}
-            <ShopShareButton slug={shop.slug} name={shop.name} />
+            <ShopShareButton slug={shop.slug} name={shop.name} className="rounded-full border-primary text-primary" />
           </div>
         </header>
 
