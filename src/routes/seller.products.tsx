@@ -13,6 +13,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { formatPrice } from "@/lib/money";
+import { discountPercent } from "@/lib/shop-theme";
 import { Package, Trash2, Edit, Copy, Eye, EyeOff, Star, Search, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/seller/products")({
@@ -37,7 +38,15 @@ type EditForm = {
   category_id: string;
   image: string;
   is_active: boolean;
+  compare: string;
 };
+
+/** Old price in cents, or null when empty. Must be above the selling price. */
+function parseCompare(v: string, price: number): number | null | "invalid" {
+  if (!v.trim()) return null;
+  const n = Math.round(parseFloat(v.replace(",", ".")) * 100);
+  return Number.isFinite(n) && n > price ? n : "invalid";
+}
 
 function SellerProducts() {
   const { user } = useAuth();
@@ -60,7 +69,7 @@ function SellerProducts() {
     queryFn: async () => { if (!shop) return []; const { data, error } = await supabase.from("products").select("*").eq("shop_id", shop.id).order("created_at", { ascending: false }); if (error) throw error; return data ?? []; },
   });
 
-  const emptyForm = { title: "", description: "", price: "", stock: "1", category_id: "", image: "" };
+  const emptyForm = { title: "", description: "", price: "", stock: "1", category_id: "", image: "", compare: "" };
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<EditForm | null>(null);
@@ -97,6 +106,8 @@ function SellerProducts() {
       category_id: form.category_id || undefined,
     });
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
+    const compare = parseCompare(form.compare, parsed.data.price_cents);
+    if (compare === "invalid") { toast.error("L'ancien prix doit être supérieur au prix de vente"); return; }
     setSaving(true);
     const { error } = await supabase.from("products").insert({
       shop_id: shop.id,
@@ -106,6 +117,7 @@ function SellerProducts() {
       price_cents: parsed.data.price_cents,
       stock: parsed.data.stock,
       images: form.image ? [form.image] : [],
+      compare_at_price_cents: compare,
       status: "active",
     });
     setSaving(false);
@@ -145,6 +157,7 @@ function SellerProducts() {
       description: p.description,
       currency: p.currency,
       price_cents: p.price_cents,
+      compare_at_price_cents: p.compare_at_price_cents,
       stock: p.stock,
       images: p.images ?? [],
       status: "active",
@@ -176,6 +189,7 @@ function SellerProducts() {
       category_id: p.category_id ?? "",
       image: p.images?.[0] ?? "",
       is_active: p.is_active ?? true,
+      compare: p.compare_at_price_cents ? String(p.compare_at_price_cents / 100) : "",
     });
   }
 
@@ -191,7 +205,10 @@ function SellerProducts() {
       category_id: editing.category_id || undefined,
     });
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
+    const compare = parseCompare(editing.compare, parsed.data.price_cents);
+    if (compare === "invalid") { toast.error("L'ancien prix doit être supérieur au prix de vente"); return; }
     const { error } = await supabase.from("products").update({
+      compare_at_price_cents: compare,
       title: parsed.data.title,
       description: parsed.data.description ?? null,
       price_cents: parsed.data.price_cents,
@@ -203,6 +220,8 @@ function SellerProducts() {
     toast.success("Produit mis à jour");
     setEditing(null);
     qc.invalidateQueries({ queryKey: ["seller-products"] });
+    qc.invalidateQueries({ queryKey: ["shop-products"] });
+    qc.invalidateQueries({ queryKey: ["featured-products"] });
   }
 
   return (
@@ -220,6 +239,7 @@ function SellerProducts() {
         <div className="grid md:grid-cols-2 gap-4">
           <div className="md:col-span-2"><Label>Titre</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required maxLength={150} /></div>
           <div><Label>Prix</Label><Input type="number" min="0" step="1" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required /></div>
+          <div><Label>Ancien prix (promo, optionnel)</Label><Input type="number" min="0" step="1" value={form.compare} onChange={(e) => setForm({ ...form, compare: e.target.value })} placeholder="Laisser vide si pas de promo" /></div>
           <div><Label>Stock</Label><Input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} required /></div>
           <div>
             <Label>Catégorie</Label>
@@ -265,14 +285,14 @@ function SellerProducts() {
                 </div>
                 <div className="p-3 flex-1 flex flex-col">
                   <div className="font-medium line-clamp-2">{p.title}</div>
-                  <div className="text-sm font-semibold text-primary mt-1">{formatPrice(p.price_cents, p.currency)}</div>
+                  <div className="text-sm font-semibold text-primary mt-1 flex flex-wrap items-baseline gap-1.5">{formatPrice(p.price_cents, p.currency)}{discountPercent(p.price_cents, p.compare_at_price_cents) > 0 && <><s className="text-xs text-muted-foreground font-normal">{formatPrice(p.compare_at_price_cents!, p.currency)}</s><span className="text-xs rounded-full bg-destructive px-1.5 text-destructive-foreground">-{discountPercent(p.price_cents, p.compare_at_price_cents)}%</span></>}</div>
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     <Button size="sm" variant="outline" disabled={busy === p.id} onClick={() => openEdit(p)}><Edit className="h-3.5 w-3.5 mr-1" />Modifier</Button>
                     <Button size="sm" variant="outline" disabled={busy === p.id} onClick={() => duplicate(p)}><Copy className="h-3.5 w-3.5 mr-1" />Dupliquer</Button>
                     <Button size="sm" variant="outline" disabled={busy === p.id} onClick={() => toggleActive(p)}>
                       {p.is_active ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Masquer</> : <><Eye className="h-3.5 w-3.5 mr-1" />Afficher</>}
                     </Button>
-                    <Button size="sm" variant={p.is_featured ? "secondary" : "outline"} disabled={busy === p.id} onClick={() => toggleFeatured(p)}><Star className="h-3.5 w-3.5" />{p.is_featured ? "Retirer de la vedette" : "Mettre en vedette"}</Button>
+                    <Button size="sm" variant={p.is_featured ? "secondary" : "outline"} disabled={busy === p.id} onClick={() => toggleFeatured(p)}><Star className="h-3.5 w-3.5" />{p.is_featured ? "Retirer de l’avant" : "Mettre en avant"}</Button>
                     <Button title="Supprimer le produit" aria-label="Supprimer le produit" size="sm" variant="ghost" disabled={busy === p.id} onClick={() => remove(p.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                   </div>
                 </div>
@@ -291,6 +311,7 @@ function SellerProducts() {
               <div><Label>Titre</Label><Input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} maxLength={150} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Prix</Label><Input type="number" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value })} /></div>
+                <div><Label>Ancien prix (promo)</Label><Input type="number" value={editing.compare} placeholder="Vide = pas de promo" onChange={(e) => setEditing({ ...editing, compare: e.target.value })} /></div>
                 <div><Label>Stock</Label><Input type="number" value={editing.stock} onChange={(e) => setEditing({ ...editing, stock: e.target.value })} /></div>
               </div>
               <div>

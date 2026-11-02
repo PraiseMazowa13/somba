@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { formatPrice } from "@/lib/money";
+import { discountPercent } from "@/lib/shop-theme";
 import { Heart, Package, Plus, Store } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { addToCart } from "@/lib/cart";
@@ -14,11 +15,14 @@ export type ProductCardData = {
   price_cents: number;
   currency: string;
   images: string[] | null;
+  compare_at_price_cents?: number | null;
+  is_featured?: boolean;
   shops?: { name: string; slug: string; logo_url?: string | null } | null;
 };
 
 export function ProductCard({ p }: { p: ProductCardData }) {
   const img = p.images?.[0];
+  const off = discountPercent(p.price_cents, p.compare_at_price_cents);
   const { user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -57,6 +61,8 @@ export function ProductCard({ p }: { p: ProductCardData }) {
         ) : (
           <Package className="h-8 w-8 text-muted-foreground" />
         )}
+        {off > 0 && <span className="absolute bottom-1.5 left-1.5 rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">-{off}%</span>}
+        {p.is_featured && <span className="absolute bottom-1.5 right-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">★</span>}
         <Button
           variant="ghost"
           size="icon"
@@ -81,7 +87,10 @@ export function ProductCard({ p }: { p: ProductCardData }) {
       </div>
 
       <div className="min-w-0 px-1 pt-1.5 pb-1 flex-1 flex flex-col gap-0.5">
-        <span className="text-[11px] leading-4 font-bold text-primary break-words">{formatPrice(p.price_cents, p.currency)}</span>
+        <div className="flex flex-wrap items-baseline gap-x-1">
+          <span className="text-[11px] leading-4 font-bold text-primary break-words">{formatPrice(p.price_cents, p.currency)}</span>
+          {off > 0 && <s className="text-[10px] text-muted-foreground">{formatPrice(p.compare_at_price_cents!, p.currency)}</s>}
+        </div>
         {p.shops && (
           <div className="min-w-0 flex items-center gap-1 text-[10px] text-muted-foreground">
             {p.shops.logo_url ? (

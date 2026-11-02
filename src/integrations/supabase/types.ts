@@ -248,6 +248,7 @@ export type Database = {
       products: {
         Row: {
           category_id: string | null
+          compare_at_price_cents: number | null
           created_at: string
           currency: string
           description: string | null
@@ -264,6 +265,7 @@ export type Database = {
         }
         Insert: {
           category_id?: string | null
+          compare_at_price_cents?: number | null
           created_at?: string
           currency?: string
           description?: string | null
@@ -280,6 +282,7 @@ export type Database = {
         }
         Update: {
           category_id?: string | null
+          compare_at_price_cents?: number | null
           created_at?: string
           currency?: string
           description?: string | null
@@ -346,6 +349,7 @@ export type Database = {
           deletion_requested_at: string | null
           delivery_zones: Json
           description: string | null
+          font_key: string | null
           id: string
           is_featured: boolean
           logo_url: string | null
@@ -353,6 +357,7 @@ export type Database = {
           owner_id: string
           slug: string
           status: Database["public"]["Enums"]["shop_status"]
+          tagline: string | null
           theme_color: string | null
           updated_at: string
           whatsapp_number: string | null
@@ -364,6 +369,7 @@ export type Database = {
           deletion_requested_at?: string | null
           delivery_zones?: Json
           description?: string | null
+          font_key?: string | null
           id?: string
           is_featured?: boolean
           logo_url?: string | null
@@ -371,6 +377,7 @@ export type Database = {
           owner_id: string
           slug: string
           status?: Database["public"]["Enums"]["shop_status"]
+          tagline?: string | null
           theme_color?: string | null
           updated_at?: string
           whatsapp_number?: string | null
@@ -382,6 +389,7 @@ export type Database = {
           deletion_requested_at?: string | null
           delivery_zones?: Json
           description?: string | null
+          font_key?: string | null
           id?: string
           is_featured?: boolean
           logo_url?: string | null
@@ -389,6 +397,7 @@ export type Database = {
           owner_id?: string
           slug?: string
           status?: Database["public"]["Enums"]["shop_status"]
+          tagline?: string | null
           theme_color?: string | null
           updated_at?: string
           whatsapp_number?: string | null

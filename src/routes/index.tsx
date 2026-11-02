@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { ShoppingBag, Search, SlidersHorizontal, LayoutGrid, Store, ArrowUpRight } from "lucide-react";
 import { useState } from "react";
+import { limitPerShop } from "@/lib/shop-theme";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -28,13 +29,15 @@ function Index() {
     queryFn: async () => {
       const { data } = await supabase
         .from("products")
-        .select("id,title,price_cents,currency,images,shops(name,slug,logo_url)")
+        .select("id,shop_id,title,price_cents,compare_at_price_cents,is_featured,currency,images,shops!inner(name,slug,logo_url,status)")
+        .eq("shops.status", "approved")
         .eq("status", "active")
         .eq("is_active", true)
         .order("is_featured", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(12);
-      return (data ?? []) as unknown as ProductCardData[];
+        .limit(120);
+      // Max 3 products per shop on the global home only (featured first, then newest).
+      return limitPerShop((data ?? []) as unknown as (ProductCardData & { shop_id: string })[], 3).slice(0, 18);
     },
   });
 
@@ -49,7 +52,7 @@ function Index() {
   const { data: shops } = useQuery({
     queryKey: ["home-shops"],
     queryFn: async () => {
-      const { data } = await supabase.from("shops").select("id,name,slug,logo_url").eq("status", "approved").order("is_featured", { ascending: false }).limit(10);
+      const { data } = await supabase.from("shops").select("id,name,slug,logo_url").eq("status", "approved").order("is_featured", { ascending: false }).order("name").limit(4);
       return data ?? [];
     },
   });
@@ -106,14 +109,15 @@ function Index() {
             <h2 className="text-lg md:text-2xl font-bold">Boutiques</h2>
             <Link to="/shops" className="text-sm font-semibold text-primary">Voir tout</Link>
           </div>
-          <div className="-mx-4 px-4 flex gap-3 overflow-x-auto no-scrollbar">
+          <div className="grid grid-cols-2 gap-3">
             {shops.map((s) => (
-              <Link key={s.id} to="/shops/$slug" params={{ slug: s.slug }} className="shrink-0 w-[72px] flex flex-col items-center gap-1.5">
-                <div className="h-16 w-16 rounded-2xl bg-card border border-border overflow-hidden grid place-items-center shadow-[var(--shadow-soft)]">
-                  {s.logo_url ? <img src={s.logo_url} alt={s.name} className="h-full w-full object-cover" loading="lazy" /> : <Store className="h-6 w-6 text-muted-foreground" />}
+              <div key={s.id} className="card-zandu p-3 flex flex-col items-center text-center gap-2">
+                <div className="h-14 w-14 rounded-2xl bg-secondary border border-border overflow-hidden grid place-items-center">
+                  {s.logo_url ? <img src={s.logo_url} alt={s.name} className="h-full w-full object-cover" loading="lazy" /> : <Store className="h-6 w-6 text-primary" />}
                 </div>
-                <span className="text-[11px] font-medium text-center line-clamp-1 w-full">{s.name}</span>
-              </Link>
+                <span className="text-sm font-semibold line-clamp-1 w-full">{s.name}</span>
+                <Link to="/shops/$slug" params={{ slug: s.slug }} className="w-full rounded-full bg-primary/10 text-primary px-3 py-1.5 text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-colors">Voir la boutique</Link>
+              </div>
             ))}
           </div>
         </section>

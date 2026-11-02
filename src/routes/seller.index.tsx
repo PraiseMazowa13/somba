@@ -1,3 +1,4 @@
+import { SHOP_FONTS, accessibleAccent } from "@/lib/shop-theme";
 import { ShopShareButton } from "@/components/ShopShareButton";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -40,7 +41,7 @@ function SellerShop() {
     },
   });
 
-  const [form, setForm] = useState({ name: "", description: "", logo_url: "", banner_url: "", whatsapp_number: "", theme_color: "#1d4ed8" });
+  const [form, setForm] = useState({ name: "", description: "", logo_url: "", banner_url: "", whatsapp_number: "", theme_color: "#2563EB", font_key: "jakarta", tagline: "" });
   const [saving, setSaving] = useState(false);
   const [zoneCity, setZoneCity] = useState("");
   const [zonePrice, setZonePrice] = useState("");
@@ -50,7 +51,7 @@ function SellerShop() {
   const zones: DeliveryZone[] = Array.isArray(shop?.delivery_zones) ? (shop?.delivery_zones as unknown as DeliveryZone[]) : [];
 
   useEffect(() => {
-    if (shop) setForm({ name: shop.name, description: shop.description ?? "", logo_url: shop.logo_url ?? "", banner_url: shop.banner_url ?? "", whatsapp_number: shop.whatsapp_number ?? "", theme_color: shop.theme_color ?? "#1d4ed8" });
+    if (shop) setForm({ name: shop.name, description: shop.description ?? "", logo_url: shop.logo_url ?? "", banner_url: shop.banner_url ?? "", whatsapp_number: shop.whatsapp_number ?? "", theme_color: shop.theme_color ?? "#2563EB", font_key: shop.font_key ?? "jakarta", tagline: shop.tagline ?? "" });
   }, [shop]);
 
   async function saveZones(next: DeliveryZone[]) {
@@ -84,12 +85,12 @@ function SellerShop() {
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setSaving(true);
     if (shop) {
-      const { error } = await supabase.from("shops").update({ name: parsed.data.name, description: parsed.data.description, logo_url: form.logo_url || null, banner_url: form.banner_url || null, whatsapp_number: form.whatsapp_number || null, theme_color: form.theme_color || null } as any).eq("id", shop.id);
+      const { error } = await supabase.from("shops").update({ name: parsed.data.name, description: parsed.data.description, logo_url: form.logo_url || null, banner_url: form.banner_url || null, whatsapp_number: form.whatsapp_number || null, theme_color: form.theme_color || null, font_key: form.font_key || null, tagline: form.tagline.trim().slice(0, 120) || null } as any).eq("id", shop.id);
       if (error) { setSaving(false); toast.error(error.message); return; }
       toast.success("Boutique mise à jour");
     } else {
       const slug = `${slugify(parsed.data.name)}-${Math.random().toString(36).slice(2, 6)}`;
-      const { error } = await supabase.from("shops").insert({ owner_id: user.id, name: parsed.data.name, slug, description: parsed.data.description, logo_url: form.logo_url || null, banner_url: form.banner_url || null, whatsapp_number: form.whatsapp_number || null, theme_color: form.theme_color || null });
+      const { error } = await supabase.from("shops").insert({ owner_id: user.id, name: parsed.data.name, slug, description: parsed.data.description, logo_url: form.logo_url || null, banner_url: form.banner_url || null, whatsapp_number: form.whatsapp_number || null, theme_color: form.theme_color || null, font_key: form.font_key || null, tagline: form.tagline.trim().slice(0, 120) || null });
       if (error) { setSaving(false); toast.error(error.message); return; }
       // grant seller role
       await supabase.from("user_roles").insert({ user_id: user.id, role: "seller" });
@@ -158,19 +159,23 @@ function SellerShop() {
         </div>
       </div>
       <div>
-        <Label>Bannière</Label>
-        <div className="space-y-2">
-          {form.banner_url && <img src={form.banner_url} alt="bannière" className="h-24 w-full rounded-md object-cover border border-border" />}
-          <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadImage("banner_url", e.target.files[0])} />
-        </div>
+        <Label>Slogan</Label>
+        <Input value={form.tagline} onChange={(e) => setForm({ ...form, tagline: e.target.value })} placeholder="ex : La mode qui vous ressemble" maxLength={120} />
       </div>
       <div>
-        <Label>Couleur du thème</Label>
-        <div className="flex items-center gap-3">
-          <input type="color" value={form.theme_color} onChange={(e) => setForm({ ...form, theme_color: e.target.value })} className="h-10 w-14 cursor-pointer rounded-md border border-border bg-surface p-1" aria-label="Choisir la couleur du thème" />
-          <Input value={form.theme_color} onChange={(e) => setForm({ ...form, theme_color: e.target.value })} placeholder="#1d4ed8" maxLength={7} className="w-28" />
-          <span className="text-xs text-muted-foreground">Couleur de fond et d'accent de votre boutique.</span>
+        <Label>Couleur principale</Label>
+        <div className="flex flex-wrap items-center gap-3">
+          <input type="color" value={form.theme_color} onChange={(e) => setForm({ ...form, theme_color: e.target.value })} className="h-10 w-14 cursor-pointer rounded-md border border-border bg-surface p-1" aria-label="Choisir la couleur principale" />
+          <Input value={form.theme_color} onChange={(e) => setForm({ ...form, theme_color: e.target.value })} placeholder="#2563EB" maxLength={7} className="w-28" />
+          <span className="inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold" style={{ background: accessibleAccent(form.theme_color), color: "#FFFFFF" }}>Aperçu</span>
         </div>
+        <p className="text-xs text-muted-foreground mt-1">Boutons, onglets, icônes et badges de votre boutique. Assombrie automatiquement si nécessaire pour rester lisible.</p>
+      </div>
+      <div>
+        <Label>Typographie</Label>
+        <select className="w-full rounded-md border border-input bg-surface px-3 py-2 text-sm" value={form.font_key} onChange={(e) => setForm({ ...form, font_key: e.target.value })}>
+          {Object.entries(SHOP_FONTS).map(([k, f]) => <option key={k} value={k} style={{ fontFamily: f.family }}>{f.label}</option>)}
+        </select>
       </div>
       <Button disabled={saving} className="w-full">{saving ? "Enregistrement…" : shop ? "Enregistrer" : "Créer la boutique"}</Button>
     </form>
