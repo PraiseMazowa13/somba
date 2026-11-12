@@ -43,9 +43,9 @@ function SignupPage() {
     navigate({ to: "/" });
   }
 
-  async function oauth(provider: "google" | "lovable") {
+  async function oauth(provider: "google" | "lovable" | "apple") {
     const res = await lovable.auth.signInWithOAuth(provider, { redirect_uri: window.location.origin });
-    if (res.error) toast.error(`Échec ${provider === "google" ? "Google" : "Lovable"}`);
+    if (res.error) toast.error(`Échec ${provider === "google" ? "Google" : provider === "apple" ? "Apple" : "Lovable"}`);
   }
 
   return (
