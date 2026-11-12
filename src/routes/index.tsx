@@ -52,7 +52,7 @@ function Index() {
   const { data: shops } = useQuery({
     queryKey: ["home-shops"],
     queryFn: async () => {
-      const { data } = await supabase.from("shops").select("id,name,slug,logo_url").eq("status", "approved").order("is_featured", { ascending: false }).order("name").limit(4);
+      const { data } = await supabase.from("shops").select("id,name,slug,logo_url").eq("status", "approved").order("is_featured", { ascending: false }).order("name").limit(12);
       return data ?? [];
     },
   });
@@ -109,15 +109,14 @@ function Index() {
             <h2 className="text-lg md:text-2xl font-bold">Boutiques</h2>
             <Link to="/shops" className="text-sm font-semibold text-primary">Voir tout</Link>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="-mx-4 px-4 flex gap-3 overflow-x-auto no-scrollbar">
             {shops.map((s) => (
-              <div key={s.id} className="card-zandu p-3 flex flex-col items-center text-center gap-2">
-                <div className="h-14 w-14 rounded-2xl bg-secondary border border-border overflow-hidden grid place-items-center">
-                  {s.logo_url ? <img src={s.logo_url} alt={s.name} className="h-full w-full object-cover" loading="lazy" /> : <Store className="h-6 w-6 text-primary" />}
+              <Link key={s.id} to="/shops/$slug" params={{ slug: s.slug }} className="shrink-0 w-[72px] flex flex-col items-center gap-1.5">
+                <div className="h-16 w-16 rounded-2xl bg-card border border-border overflow-hidden grid place-items-center shadow-[var(--shadow-soft)]">
+                  {s.logo_url ? <img src={s.logo_url} alt={s.name} className="h-full w-full object-cover" loading="lazy" /> : <Store className="h-6 w-6 text-muted-foreground" />}
                 </div>
-                <span className="text-sm font-semibold line-clamp-1 w-full">{s.name}</span>
-                <Link to="/shops/$slug" params={{ slug: s.slug }} className="w-full rounded-full bg-primary/10 text-primary px-3 py-1.5 text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-colors">Voir la boutique</Link>
-              </div>
+                <span className="text-[11px] font-medium text-center line-clamp-1 w-full">{s.name}</span>
+              </Link>
             ))}
           </div>
         </section>

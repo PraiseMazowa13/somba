@@ -14,8 +14,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { slugify, formatPrice } from "@/lib/money";
-import { sellerStats } from "@/lib/seller-stats";
-import { Package, ShoppingBag, DollarSign, Eye, Share2, Settings, Store, TrendingUp, AlertTriangle, Plus, ClipboardList, RefreshCw, ArrowUpRight } from "lucide-react";
+import { sellerStats, periodStart, type StatsPeriod, type TopSort } from "@/lib/seller-stats";
+import { Package, ShoppingBag, DollarSign, Eye, Share2, Settings, Store, TrendingUp, AlertTriangle, Plus, ClipboardList, RefreshCw, ArrowUpRight, Star, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/seller/")({
   head: () => ({ meta: [{ title: "Tableau de bord vendeur — Zandu" }, { name: "description", content: "Suivez vos ventes, commandes et produits dans votre espace vendeur Zandu." }, { property: "og:title", content: "Tableau de bord vendeur — Zandu" }, { property: "og:description", content: "Suivez vos ventes, commandes et produits dans votre espace vendeur Zandu." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -195,21 +195,17 @@ function SellerShop() {
     <div className="space-y-6">
       {/* En-tête pro */}
       <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="h-24 sm:h-32 bg-secondary relative">
-          {shop.banner_url && <img src={shop.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover" />}
-        </div>
-        <div className="p-4 flex flex-wrap items-end gap-4 relative">
-          <div className="h-16 w-16 rounded-xl border-4 border-background bg-secondary overflow-hidden flex items-center justify-center">
+        <div className="p-3 flex items-center gap-3">
+          <div className="h-12 w-12 shrink-0 rounded-xl border border-border bg-secondary overflow-hidden flex items-center justify-center">
             {shop.logo_url ? <img src={shop.logo_url} alt="" className="h-full w-full object-cover" /> : <Store className="h-6 w-6 text-muted-foreground" />}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground mb-1">Tableau de bord vendeur</p>
-            <h1 className="text-xl font-bold break-words">{shop.name}</h1>
+            <h1 className="text-base font-bold line-clamp-1">{shop.name}</h1>
             <span className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${statusTone}`}>{statusLabel}</span>
           </div>
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2"><Settings className="h-4 w-4" /> Paramètres</Button>
+              <Button variant="outline" size="sm" className="gap-2 shrink-0" aria-label="Paramètres"><Settings className="h-4 w-4" /><span className="hidden sm:inline">Paramètres</span></Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
               <SheetHeader><SheetTitle>Paramètres de la boutique</SheetTitle></SheetHeader>
@@ -269,7 +265,9 @@ function SellerShop() {
 }
 
 function SellerDashboard({ shopId, slug }: { shopId: string; slug: string }) {
-  const { data: stats, isPending, error, refetch, isFetching } = useQuery({
+  const [period, setPeriod] = useState<StatsPeriod>("30d");
+  const [topSort, setTopSort] = useState<TopSort>("sold");
+  const { data: raw, isPending, error, refetch, isFetching } = useQuery({
     queryKey: ["seller-stats", shopId],
     queryFn: async () => {
       const [products, orderItems] = await Promise.all([
@@ -278,10 +276,12 @@ function SellerDashboard({ shopId, slug }: { shopId: string; slug: string }) {
       ]);
       if (products.error) throw products.error;
       if (orderItems.error) throw orderItems.error;
-      return sellerStats(products.data ?? [], orderItems.data ?? []);
+      return { products: products.data ?? [], items: orderItems.data ?? [] };
     },
   });
 
+  const stats = raw ? sellerStats(raw.products, raw.items, periodStart(period), topSort) : undefined;
+  const chip = (on: boolean) => `rounded-full px-3 py-1 text-xs font-medium border ${on ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground"}`;
   const revenue = stats?.totals.length ? stats.totals.map((total) => formatPrice(total.cents, total.currency)).join(" · ") : formatPrice(0, "CDF");
   const average = stats?.totals.length ? stats.totals.map((total) => formatPrice(total.average, total.currency)).join(" · ") : formatPrice(0, "CDF");
   const cards = [
@@ -293,31 +293,34 @@ function SellerDashboard({ shopId, slug }: { shopId: string; slug: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Vue d’ensemble</h2><Button variant="ghost" size="sm" disabled={isFetching} onClick={() => refetch()}><RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "motion-safe:animate-spin" : ""}`} />Actualiser</Button></div>
+      <div className="flex items-center justify-between gap-3"><div className="flex gap-1.5" role="group" aria-label="Période">{([["7d", "7 jours"], ["30d", "30 jours"], ["all", "Tout"]] as const).map(([v, l]) => <button key={v} type="button" onClick={() => setPeriod(v)} className={chip(period === v)} aria-pressed={period === v}>{l}</button>)}</div><Button variant="ghost" size="icon" aria-label="Actualiser" disabled={isFetching} onClick={() => refetch()}><RefreshCw className={`h-4 w-4 ${isFetching ? "motion-safe:animate-spin" : ""}`} /></Button></div>
       {error && <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Impossible de charger les statistiques. Réessayez avec « Actualiser ».</div>}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {cards.map((c) => (
-          <div key={c.label} className="card-zandu p-4">
-            <div className="flex items-center justify-between mb-2">
+          <div key={c.label} className="card-zandu p-3">
+            <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-muted-foreground">{c.label}</span>
-              <span className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center"><c.icon className="h-4 w-4 text-primary" /></span>
+              <span className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center"><c.icon className="h-4 w-4 text-primary" /></span>
             </div>
-            <div className="text-lg font-bold leading-snug break-words">{error ? "—" : c.value}</div>
+            <div className="text-base font-bold leading-snug break-words">{error ? "—" : c.value}</div>
           </div>
         ))}
       </div>
 
-      {stats && stats.outOfStock > 0 && (
-        <div className="card-zandu p-3 flex items-center gap-2 text-sm"><AlertTriangle className="h-4 w-4 text-destructive" /> {stats.outOfStock} produit(s) en rupture de stock</div>
+      {stats && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          <Link to="/seller/products" className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-3 py-1"><AlertTriangle className="h-3.5 w-3.5 text-destructive" />{stats.outOfStock} en rupture</Link>
+          <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-3 py-1"><Star className="h-3.5 w-3.5 text-primary" />{stats.featured} en vedette</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-3 py-1"><Clock className="h-3.5 w-3.5 text-muted-foreground" />{stats.pending} à encaisser</span>
+        </div>
       )}
       {!!stats?.pending && <Link to="/seller/orders" className="flex items-center justify-between rounded-lg border border-border bg-promo/20 p-3 text-sm"><span>{stats.pending} commande(s) en attente de paiement</span><ArrowUpRight className="h-4 w-4 shrink-0" /></Link>}
 
-      <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Raccourcis</h2><Button asChild size="sm" variant="outline"><Link to="/seller/products">Trier mes produits<Package className="h-4 w-4" /></Link></Button></div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Button asChild variant="outline" className="h-auto py-3 flex-col gap-1"><Link to="/seller/products"><Plus className="h-5 w-5" /><span className="text-xs">Ajouter produit</span></Link></Button>
-        <Button asChild variant="outline" className="h-auto py-3 flex-col gap-1"><Link to="/seller/orders"><ClipboardList className="h-5 w-5" /><span className="text-xs">Commandes</span></Link></Button>
-        <Button asChild variant="outline" className="h-auto py-3 flex-col gap-1"><a href={`/shops/${slug}`} target="_blank" rel="noopener"><Eye className="h-5 w-5" /><span className="text-xs">Voir boutique</span></a></Button>
-        <ShopShareButton slug={slug} name="Ma boutique" className="h-auto py-3 flex-col gap-1" />
+            <div className="grid grid-cols-4 gap-2">
+        <Button asChild variant="outline" className="h-auto px-1 py-2.5 flex-col gap-1"><Link to="/seller/products"><Plus className="h-5 w-5" /><span className="text-[11px]">Ajouter</span></Link></Button>
+        <Button asChild variant="outline" className="h-auto px-1 py-2.5 flex-col gap-1"><Link to="/seller/orders"><ClipboardList className="h-5 w-5" /><span className="text-[11px]">Commandes</span></Link></Button>
+        <Button asChild variant="outline" className="h-auto px-1 py-2.5 flex-col gap-1"><a href={`/shops/${slug}`} target="_blank" rel="noopener"><Eye className="h-5 w-5" /><span className="text-[11px]">Boutique</span></a></Button>
+        <ShopShareButton slug={slug} name="Ma boutique" className="h-auto px-1 py-2.5 flex-col gap-1" />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
@@ -335,7 +338,7 @@ function SellerDashboard({ shopId, slug }: { shopId: string; slug: string }) {
           ) : <p role="status" className="py-6 text-sm text-muted-foreground">{error ? "Ventes indisponibles." : isPending ? "Chargement des ventes…" : "Aucune vente confirmée pour l’instant."}</p>}
         </section>
         <section className="min-w-0 border-t border-border pt-4">
-          <h2 className="font-semibold mb-3">Meilleurs produits</h2>
+          <div className="flex items-center justify-between mb-3 gap-2"><h2 className="font-semibold">Meilleurs produits</h2><div className="flex gap-1.5">{([["sold", "Quantité"], ["revenue", "Revenus"]] as const).map(([v, l]) => <button key={v} type="button" onClick={() => setTopSort(v)} className={chip(topSort === v)} aria-pressed={topSort === v}>{l}</button>)}</div></div>
           {stats?.top.length ? (
             <ul className="space-y-2">
               {stats.top.map((p) => (
@@ -344,13 +347,26 @@ function SellerDashboard({ shopId, slug }: { shopId: string; slug: string }) {
                     {p.images[0] ? <img src={p.images[0]} alt="" className="h-full w-full object-cover" /> : <Package className="h-5 w-5 m-auto text-muted-foreground" />}
                   </div>
                   <span className="flex-1 min-w-0 break-words">{p.title}</span>
-                  <span className="text-muted-foreground">{p.sold} vendu(s)</span>
+                  <span className="text-muted-foreground text-xs text-right">{topSort === "revenue" ? formatPrice(p.revenue, p.currency) : `${p.sold} vendu(s)`}</span>
                 </li>
               ))}
             </ul>
           ) : <div className="py-6 text-sm text-muted-foreground">{error ? "Produits indisponibles." : isPending ? "Chargement des produits…" : "Vos meilleures ventes apparaîtront ici."}{stats?.productCount === 0 && <Button asChild variant="outline" size="sm" className="mt-4 flex w-fit"><Link to="/seller/products"><Plus className="mr-2 h-4 w-4" />Ajouter un produit</Link></Button>}</div>}
         </section>
       </div>
+      {!!stats?.lowStock.length && (
+        <section className="border-t border-border pt-4">
+          <div className="flex items-center justify-between mb-3"><h2 className="font-semibold">Stock à surveiller</h2><Button asChild variant="ghost" size="sm"><Link to="/seller/products">Gérer<ArrowUpRight className="ml-1 h-4 w-4" /></Link></Button></div>
+          <ul className="space-y-2">
+            {stats.lowStock.map((p) => (
+              <li key={p.id} className="flex items-center gap-3 text-sm">
+                <span className="flex-1 min-w-0 line-clamp-1">{p.title}</span>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${p.stock <= 0 ? "bg-destructive/10 text-destructive" : "bg-promo/20"}`}>{p.stock <= 0 ? "Rupture" : `${p.stock} restant(s)`}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

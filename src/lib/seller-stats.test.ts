@@ -27,4 +27,12 @@ describe("Seller dashboard statistics", () => {
     expect(stats.top[0].sold).toBe(4);
     expect(stats.recent[0].title).toBe("Sac acheté");
   });
+  test("period keeps only recent sales", () => {
+    const stats = sellerStats([product], [item("1", "CDF", "paid"), item("20", "CDF", "paid")], "2026-10-15");
+    expect(stats.totals[0].cents).toBe(20000);
+  });
+  test("lists active products with 3 or fewer in stock", () => {
+    const stats = sellerStats([product, { ...product, id: "p2", stock: 3 }, { ...product, id: "p3", stock: 4 }], []);
+    expect(stats.lowStock.map((p) => p.id)).toEqual(["p1", "p2"]);
+  });
 });
