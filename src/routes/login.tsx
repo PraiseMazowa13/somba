@@ -36,11 +36,29 @@ function LoginPage() {
     navigate({ to: "/" });
   }
 
-  async function oauth(provider: "google" | "lovable") {
+  const [magicSent, setMagicSent] = useState(false);
+  const [magicLoading, setMagicLoading] = useState(false);
+
+  async function oauth(provider: "google" | "lovable" | "apple") {
     const res = await lovable.auth.signInWithOAuth(provider, { redirect_uri: window.location.origin });
-    if (res.error) { toast.error(`Échec de connexion ${provider === "google" ? "Google" : "Lovable"}`); return; }
+    if (res.error) { toast.error(`Échec de connexion ${provider === "google" ? "Google" : provider === "apple" ? "Apple" : "Lovable"}`); return; }
     if (res.redirected) return;
     navigate({ to: "/" });
+  }
+
+  async function sendMagicLink(e: React.FormEvent) {
+    e.preventDefault();
+    const parsed = z.string().trim().email("Email invalide").max(255).safeParse(email);
+    if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
+    setMagicLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email: parsed.data,
+      options: { emailRedirectTo: window.location.origin },
+    });
+    setMagicLoading(false);
+    if (error) { toast.error(error.message); return; }
+    setMagicSent(true);
+    toast.success("Lien envoyé ! Vérifiez votre boîte mail.");
   }
 
   return (
